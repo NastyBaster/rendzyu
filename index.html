@@ -13,11 +13,11 @@
   <canvas id="board" width="600" height="600"></canvas>
   <button id="reset">Нова гра</button>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script type="module">
+    // Імпортуємо необхідні функції з Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-  <script>
     // 🔹 встав тут свої дані з Firebase Console
     const firebaseConfig = {
       apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
@@ -31,8 +31,8 @@
     };
 
     // Ініціалізація
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
     const canvas = document.getElementById("board");
     const ctx = canvas.getContext("2d");
@@ -42,8 +42,8 @@
     let current = "black"; 
 
     // Firebase refs
-    const movesRef = db.ref("moves");
-    const currentRef = db.ref("current");
+    const movesRef = ref(db, "moves");
+    const currentRef = ref(db, "current");
 
     // Малюємо дошку
     function drawBoard() {
@@ -102,7 +102,7 @@
     }
 
     // Слухаємо базу
-    movesRef.on("value", snapshot => {
+    onValue(movesRef, snapshot => {
       const moves = snapshot.val() || {};
       board = Array.from({length:size},()=>Array(size).fill(null));
       for(let key in moves){
@@ -112,7 +112,7 @@
       drawBoard();
     });
 
-    currentRef.on("value", snapshot => {
+    onValue(currentRef, snapshot => {
       current = snapshot.val() || "black";
     });
 
@@ -124,19 +124,23 @@
       if(x<0||y<0||x>=size||y>=size) return;
       if(!board[y][x]){
         const move = {x,y,color:current};
-        movesRef.push(move); 
+        push(movesRef, move); 
         if(checkWinner(x,y,current)){
-          alert(current.toUpperCase() + " виграв!");
+          setTimeout(() => { // Невелика затримка, щоб камінь встиг промалюватися
+            alert(current.toUpperCase() + " виграв!");
+            remove(movesRef);
+            set(currentRef, "black");
+          }, 100);
           return;
         }
-        currentRef.set(current==="black"?"white":"black");
+        set(currentRef, current==="black"?"white":"black");
       }
     });
 
     // Нова гра
     document.getElementById("reset").addEventListener("click", () => {
-      movesRef.remove();
-      currentRef.set("black");
+      remove(movesRef);
+      set(currentRef, "black");
     });
 
     drawBoard();
