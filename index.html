@@ -1,29 +1,102 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
   <meta charset="UTF-8">
   <title>Рендзю онлайн</title>
   <style>
-    body { display:flex; justify-content:center; align-items:center; flex-direction: column; height:100vh; background:#f0f0f0; margin:0; }
-    canvas { background:#f9d58a; box-shadow:0 0 10px rgba(0,0,0,0.5); cursor:pointer; }
-    button { margin-top: 10px; padding: 5px 10px; font-size:16px; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+      background: #f0f0f0;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+
+    canvas {
+      background: #f9d58a;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 15px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    
+    /* СТИЛІ ДЛЯ АПГРЕЙДІВ */
+
     #turn-indicator {
-    font-family: sans-serif;
-    color: #333;
-    height: 30px;
+      font-family: sans-serif;
+      color: #333;
+      height: 30px; /* Резервуємо місце, щоб сторінка не "стрибала" */
+      margin-bottom: 5px;
+      margin-top: 20px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    #winner-modal {
+      background: white;
+      padding: 25px 50px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+    
+    #winner-modal h2 {
+        margin-top: 0;
+    }
+
+    #play-again {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+    }
+
   </style>
 </head>
 <body>
+
   <canvas id="board" width="600" height="600"></canvas>
-  <h2 id="turn-indicator">Хід чорних</h2>
+  <h2 id="turn-indicator">Завантаження...</h2>
   <button id="reset">Нова гра</button>
+
+  <!-- Модальне вікно для переможця -->
+  <div id="overlay" class="hidden">
+    <div id="winner-modal">
+      <h2 id="winner-message"></h2>
+      <button id="play-again">Грати ще раз</button>
+    </div>
+  </div>
 
   <script type="module">
     // Імпортуємо необхідні функції з Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    // 🔹 встав тут свої дані з Firebase Console
+    // 🔹 Ваші дані з Firebase Console
     const firebaseConfig = {
       apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
       authDomain: "rendzyu-ed6bf.firebaseapp.com",
@@ -39,12 +112,19 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
+    // Отримуємо елементи зі сторінки
     const canvas = document.getElementById("board");
     const ctx = canvas.getContext("2d");
+    const resetButton = document.getElementById("reset");
+    const turnIndicator = document.getElementById("turn-indicator");
+    const overlay = document.getElementById("overlay");
+    const winnerMessage = document.getElementById("winner-message");
+    const playAgainButton = document.getElementById("play-again");
+
     const size = 15;
     const cell = canvas.width / size;
-    let board = Array.from({length:size},()=>Array(size).fill(null));
-    let current = "black"; 
+    let board = Array.from({ length: size }, () => Array(size).fill(null));
+    let current = "black";
 
     // Firebase refs
     const movesRef = ref(db, "moves");
@@ -52,25 +132,25 @@
 
     // Малюємо дошку
     function drawBoard() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = "#000";
       ctx.lineWidth = 1;
-      for (let i=0;i<size;i++){
+      for (let i = 0; i < size; i++) {
         ctx.beginPath();
-        ctx.moveTo(cell/2, cell/2+i*cell);
-        ctx.lineTo(canvas.width-cell/2, cell/2+i*cell);
+        ctx.moveTo(cell / 2, cell / 2 + i * cell);
+        ctx.lineTo(canvas.width - cell / 2, cell / 2 + i * cell);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(cell/2+i*cell, cell/2);
-        ctx.lineTo(cell/2+i*cell, canvas.height-cell/2);
+        ctx.moveTo(cell / 2 + i * cell, cell / 2);
+        ctx.lineTo(cell / 2 + i * cell, canvas.height - cell / 2);
         ctx.stroke();
       }
-      // камені
-      for (let y=0;y<size;y++){
-        for (let x=0;x<size;x++){
-          if(board[y][x]){
+      // Малюємо камені
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (board[y][x]) {
             ctx.beginPath();
-            ctx.arc(cell/2 + x*cell, cell/2 + y*cell, cell*0.4, 0, Math.PI*2);
+            ctx.arc(cell / 2 + x * cell, cell / 2 + y * cell, cell * 0.4, 0, Math.PI * 2);
             ctx.fillStyle = board[y][x];
             ctx.shadowColor = "rgba(0,0,0,0.3)";
             ctx.shadowBlur = 5;
@@ -84,73 +164,91 @@
     // Перевірка переможця
     function checkWinner(x, y, color) {
       const directions = [
-        [[1,0],[-1,0]],   // горизонталь
-        [[0,1],[0,-1]],   // вертикаль
-        [[1,1],[-1,-1]],  // діагональ \
-        [[1,-1],[-1,1]]   // діагональ /
+        [[1, 0], [-1, 0]],   // горизонталь
+        [[0, 1], [0, -1]],   // вертикаль
+        [[1, 1], [-1, -1]],  // діагональ \
+        [[1, -1], [-1, 1]]   // діагональ /
       ];
-      for (let dir of directions){
+      for (let dir of directions) {
         let count = 1;
-        for (let [dx,dy] of dir){
+        for (let [dx, dy] of dir) {
           let nx = x, ny = y;
-          while(true){
+          while (true) {
             nx += dx;
             ny += dy;
-            if(nx<0||ny<0||nx>=size||ny>=size) break;
-            if(board[ny][nx]===color) count++;
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) break;
+            if (board[ny][nx] === color) count++;
             else break;
           }
         }
-        if(count >= 5) return true;
+        if (count >= 5) return true;
       }
       return false;
     }
 
-    // Слухаємо базу
+    // Функція для показу вікна переможця
+    function showWinner(player) {
+      const winnerName = player === 'black' ? 'Чорні' : 'Білі';
+      winnerMessage.textContent = `${winnerName} перемогли!`;
+      overlay.classList.remove("hidden");
+    }
+
+    // Слухаємо базу даних для ходів
     onValue(movesRef, snapshot => {
       const moves = snapshot.val() || {};
-      board = Array.from({length:size},()=>Array(size).fill(null));
-      for(let key in moves){
-        const {x,y,color} = moves[key];
+      board = Array.from({ length: size }, () => Array(size).fill(null));
+      for (let key in moves) {
+        const { x, y, color } = moves[key];
         board[y][x] = color;
       }
       drawBoard();
     });
 
+    // Слухаємо базу даних для черги ходу
     onValue(currentRef, snapshot => {
       current = snapshot.val() || "black";
+      const turnName = current === "black" ? "чорних" : "білих";
+      turnIndicator.textContent = `Хід ${turnName}`;
     });
 
-    // Клік
+    // Обробка кліку по дошці
     canvas.addEventListener("click", e => {
+      // Не дозволяємо ходити, якщо гра закінчена (вікно переможця відкрито)
+      if (!overlay.classList.contains('hidden')) {
+          return;
+      }
+
       const rect = canvas.getBoundingClientRect();
-      const x = Math.round((e.clientX - rect.left - cell/2) / cell);
-      const y = Math.round((e.clientY - rect.top - cell/2) / cell);
-      if(x<0||y<0||x>=size||y>=size) return;
-      if(!board[y][x]){
-        const move = {x,y,color:current};
-        push(movesRef, move); 
-        if(checkWinner(x,y,current)){
-          setTimeout(() => { // Невелика затримка, щоб камінь встиг промалюватися
-            alert(current.toUpperCase() + " виграв!");
-            remove(movesRef);
-            set(currentRef, "black");
+      const x = Math.round((e.clientX - rect.left - cell / 2) / cell);
+      const y = Math.round((e.clientY - rect.top - cell / 2) / cell);
+      if (x < 0 || y < 0 || x >= size || y >= size) return;
+
+      if (!board[y][x]) {
+        const move = { x, y, color: current };
+        push(movesRef, move);
+        if (checkWinner(x, y, current)) {
+          setTimeout(() => {
+            showWinner(current);
           }, 100);
           return;
         }
-        set(currentRef, current==="black"?"white":"black");
+        set(currentRef, current === "black" ? "white" : "black");
       }
     });
 
-    // Нова гра
-    document.getElementById("reset").addEventListener("click", () => {
-      remove(movesRef);
-      set(currentRef, "black");
-    });
+    function resetGame() {
+        remove(movesRef);
+        set(currentRef, "black");
+        overlay.classList.add("hidden"); // Ховаємо вікно переможця
+    }
+
+    // Нова гра (кнопка під дошкою)
+    resetButton.addEventListener("click", resetGame);
+
+    // Нова гра (кнопка у вікні переможця)
+    playAgainButton.addEventListener("click", resetGame);
 
     drawBoard();
   </script>
 </body>
 </html>
-
-
