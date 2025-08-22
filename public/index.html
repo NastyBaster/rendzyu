@@ -4,11 +4,10 @@
   <meta charset="UTF-8">
   <title>Рендзю онлайн</title>
   <style>
-    /* ... ваші стилі залишаються без змін ... */
     body { display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #f0f0f0; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
     canvas { background: #f9d58a; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); cursor: pointer; }
     button { margin-top: 10px; padding: 8px 15px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; border-radius: 5px; }
-    #turn-indicator { font-family: sans-serif; color: #333; height: 30px; margin-bottom: 5px; margin-top: 20px; }
+    #turn-indicator { font-family: sans-serif; color: #333; height: 30px; margin-bottom: 5px; margin-top: 20px; text-align: center; }
     .hidden { display: none !important; }
     #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     #winner-modal { background: white; padding: 25px 50px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
@@ -44,35 +43,34 @@
       measurementId: "G-SYK9RLDKQ5"
     };
 
-    // Ініціалізація
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-
-    // ... Отримуємо елементи зі сторінки ...
-    const canvas = document.getElementById("board");
-    // ... інші елементи ...
-    const turnIndicator = document.getElementById("turn-indicator");
     
-    // ----------- НОВИЙ БЛОК: ІДЕНТИФІКАЦІЯ ГРАВЦЯ -----------
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const resetButton = document.getElementById("reset");
+    const turnIndicator = document.getElementById("turn-indicator");
+    const overlay = document.getElementById("overlay");
+    const winnerMessage = document.getElementById("winner-message");
+    const playAgainButton = document.getElementById("play-again");
+
     let myPlayerId = sessionStorage.getItem('playerId');
     if (!myPlayerId) {
-      myPlayerId = Date.now().toString() + Math.random().toString(); // Створюємо унікальний ID для сесії
+      myPlayerId = Date.now().toString() + Math.random().toString();
       sessionStorage.setItem('playerId', myPlayerId);
     }
-    let myRole = null; // 'black', 'white', або 'spectator'
-    // ----------------------------------------------------
+    let myRole = null;
 
     const size = 15;
     const cell = canvas.width / size;
     let board = Array.from({ length: size }, () => Array(size).fill(null));
     let current = "black";
 
-    // Firebase refs
     const movesRef = ref(db, "moves");
     const currentRef = ref(db, "current");
-    const playersRef = ref(db, "players"); // ← Нове посилання на гравців
+    const playersRef = ref(db, "players");
 
-    // ----------- НОВИЙ БЛОК: РОЗПОДІЛ РОЛЕЙ -----------
+    // Розподіл ролей
     onValue(playersRef, (snapshot) => {
         const players = snapshot.val() || {};
         const blackPlayer = players.black;
@@ -80,84 +78,132 @@
 
         if (blackPlayer === myPlayerId) {
             myRole = 'black';
-            turnIndicator.textContent += " (Ви граєте за чорних)";
         } else if (whitePlayer === myPlayerId) {
             myRole = 'white';
-            turnIndicator.textContent += " (Ви граєте за білих)";
         } else if (!blackPlayer) {
-            // Якщо місце чорних вільне, займаємо його
             set(ref(db, 'players/black'), myPlayerId);
             myRole = 'black';
-            onDisconnect(ref(db, 'players/black')).remove(); // Якщо я закрию вкладку, моє місце звільниться
+            onDisconnect(ref(db, 'players/black')).remove();
         } else if (!whitePlayer) {
-            // Якщо місце білих вільне, займаємо його
             set(ref(db, 'players/white'), myPlayerId);
             myRole = 'white';
-            onDisconnect(ref(db, 'players/white')).remove(); // Якщо я закрию вкладку, моє місце звільниться
+            onDisconnect(ref(db, 'players/white')).remove();
         } else {
-            myRole = 'spectator'; // Обидва місця зайняті
-            turnIndicator.textContent += " (Ви глядач)";
+            myRole = 'spectator';
         }
-    }, { onlyOnce: true }); // Виконуємо лише один раз при завантаженні
-    // ----------------------------------------------------
+    }, { onlyOnce: true });
 
-    // ... функції drawBoard, checkWinner, showWinner залишаються без змін ...
-    function drawBoard() { /* ... */ }
-    function checkWinner(x, y, color) { /* ... */ }
-    function showWinner(player) { /* ... */ }
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cell / 2, cell / 2 + i * cell);
+        ctx.lineTo(canvas.width - cell / 2, cell / 2 + i * cell);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cell / 2 + i * cell, cell / 2);
+        ctx.lineTo(cell / 2 + i * cell, canvas.height - cell / 2);
+        ctx.stroke();
+      }
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (board[y][x]) {
+            ctx.beginPath();
+            ctx.arc(cell / 2 + x * cell, cell / 2 + y * cell, cell * 0.4, 0, Math.PI * 2);
+            ctx.fillStyle = board[y][x];
+            ctx.shadowColor = "rgba(0,0,0,0.3)";
+            ctx.shadowBlur = 5;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        }
+      }
+    }
 
+    function checkWinner(x, y, color) {
+        const directions = [[[1, 0], [-1, 0]],[[0, 1], [0, -1]],[[1, 1], [-1, -1]],[[1, -1], [-1, 1]]];
+        for (let dir of directions) {
+            let count = 1;
+            for (let [dx, dy] of dir) {
+                let nx = x, ny = y;
+                while (true) {
+                    nx += dx; ny += dy;
+                    if (nx < 0 || ny < 0 || nx >= size || ny >= size || board[ny][nx] !== color) break;
+                    count++;
+                }
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
 
-    // Слухаємо базу даних для черги ходу
+    function showWinner(player) {
+      const winnerName = player === 'black' ? 'Чорні' : 'Білі';
+      winnerMessage.textContent = `${winnerName} перемогли!`;
+      overlay.classList.remove("hidden");
+    }
+
+    // ↓↓↓ ЦЕЙ БЛОК, ЙМОВІРНО, БУВ ВИДАЛЕНИЙ. ВІН КРИТИЧНО ВАЖЛИВИЙ ↓↓↓
+    onValue(movesRef, snapshot => {
+      const moves = snapshot.val() || {};
+      // Очищуємо локальну дошку перед оновленням
+      board = Array.from({ length: size }, () => Array(size).fill(null)); 
+      for (let key in moves) {
+        const { x, y, color } = moves[key];
+        board[y][x] = color;
+      }
+      // Перемальовуємо дошку з новими даними
+      drawBoard();
+    });
+    // ↑↑↑ КІНЕЦЬ КРИТИЧНО ВАЖЛИВОГО БЛОКУ ↑↑↑
+
     onValue(currentRef, snapshot => {
       current = snapshot.val() || "black";
       const turnName = current === "black" ? "чорних" : "білих";
-      turnIndicator.textContent = `Хід ${turnName}`;
-      // Оновлюємо статус, враховуючи роль гравця
+      let statusText = `Хід ${turnName}`;
       if (myRole && myRole !== 'spectator') {
-          turnIndicator.textContent += ` (Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})`;
+          statusText += `<br><small>(Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})</small>`;
       } else if (myRole === 'spectator') {
-          turnIndicator.textContent += " (Ви глядач)";
+          statusText += "<br><small>(Ви глядач)</small>";
       }
+      turnIndicator.innerHTML = statusText;
     });
 
-    // Обробка кліку по дошці
     canvas.addEventListener("click", e => {
-        // ----------- ОНОВЛЕНА ЛОГІКА КЛІКУ -----------
         if (myRole !== current) {
-            console.log(`Зараз хід ${current}, а ви граєте за ${myRole}.`);
-            return; // Не ваш хід, нічого не робимо
+            return;
         }
-        // ---------------------------------------------
-        
-        // ... подальша логіка кліку залишається такою ж ...
+        if (!overlay.classList.contains('hidden')) {
+            return;
+        }
         const rect = canvas.getBoundingClientRect();
         const x = Math.round((e.clientX - rect.left - cell / 2) / cell);
         const y = Math.round((e.clientY - rect.top - cell / 2) / cell);
-        if (x < 0 || y < 0 || x >= size || y >= size) return;
+        if (x < 0 || y < 0 || x >= size || y >= size || board[y][x]) return;
 
-        if (!board[y][x]) {
-            const move = { x, y, color: current };
-            push(movesRef, move);
-            if (checkWinner(x, y, current)) {
-                setTimeout(() => showWinner(current), 100);
-                return;
-            }
-            set(currentRef, current === "black" ? "white" : "black");
+        const move = { x, y, color: current };
+        push(movesRef, move);
+        if (checkWinner(x, y, current)) {
+          setTimeout(() => showWinner(current), 100);
+          return;
         }
+        set(currentRef, current === "black" ? "white" : "black");
     });
     
-    // При скиданні гри очищуємо і гравців
     function resetGame() {
         remove(movesRef);
         set(currentRef, "black");
-        remove(playersRef); // ← Очищуємо ролі гравців
+        remove(playersRef);
         overlay.classList.add("hidden");
-        // Перезавантажуємо сторінку, щоб ролі перерозподілились
-        window.location.reload(); 
+        // Замість перезавантаження просто чекаємо на оновлення з Firebase
     }
-    
-    // ... решта коду (слухачі кнопок, виклик drawBoard) ...
 
+    resetButton.addEventListener("click", resetGame);
+    playAgainButton.addEventListener("click", resetGame);
+
+    drawBoard(); // Перше відмальовування порожньої дошки
   </script>
 </body>
 </html>
