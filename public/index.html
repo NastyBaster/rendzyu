@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Рендзю онлайн</title>
+  <style>
+    /* ... ваші стилі залишаються без змін ... */
+    body { display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #f0f0f0; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
+    canvas { background: #f9d58a; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); cursor: pointer; }
+    button { margin-top: 10px; padding: 8px 15px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; border-radius: 5px; }
+    #turn-indicator { font-family: sans-serif; color: #333; height: 30px; margin-bottom: 5px; margin-top: 20px; }
+    .hidden { display: none !important; }
+    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    #winner-modal { background: white; padding: 25px 50px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
+    #winner-modal h2 { margin-top: 0; }
+    #play-again { background-color: #4CAF50; color: white; border: none; }
+  </style>
+</head>
+<body>
+
+  <canvas id="board" width="600" height="600"></canvas>
+  <h2 id="turn-indicator">Завантаження...</h2>
+  <button id="reset">Нова гра</button>
+
+  <div id="overlay" class="hidden">
+    <div id="winner-modal">
+      <h2 id="winner-message"></h2>
+      <button id="play-again">Грати ще раз</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue, set, push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
+      authDomain: "rendzyu-ed6bf.firebaseapp.com",
+      databaseURL: "https://rendzyu-ed6bf-default-rtdb.firebaseio.com",
+      projectId: "rendzyu-ed6bf",
+      storageBucket: "rendzyu-ed6bf.firebasestorage.app",
+      messagingSenderId: "928258814163",
+      appId: "1:928258814163:web:48cbcdfaa01f9f030fe426",
+      measurementId: "G-SYK9RLDKQ5"
+    };
+
+    // Ініціалізація
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // ... Отримуємо елементи зі сторінки ...
+    const canvas = document.getElementById("board");
+    // ... інші елементи ...
+    const turnIndicator = document.getElementById("turn-indicator");
+    
+    // ----------- НОВИЙ БЛОК: ІДЕНТИФІКАЦІЯ ГРАВЦЯ -----------
+    let myPlayerId = sessionStorage.getItem('playerId');
+    if (!myPlayerId) {
+      myPlayerId = Date.now().toString() + Math.random().toString(); // Створюємо унікальний ID для сесії
+      sessionStorage.setItem('playerId', myPlayerId);
+    }
+    let myRole = null; // 'black', 'white', або 'spectator'
+    // ----------------------------------------------------
+
+    const size = 15;
+    const cell = canvas.width / size;
+    let board = Array.from({ length: size }, () => Array(size).fill(null));
+    let current = "black";
+
+    // Firebase refs
+    const movesRef = ref(db, "moves");
+    const currentRef = ref(db, "current");
+    const playersRef = ref(db, "players"); // ← Нове посилання на гравців
+
+    // ----------- НОВИЙ БЛОК: РОЗПОДІЛ РОЛЕЙ -----------
+    onValue(playersRef, (snapshot) => {
+        const players = snapshot.val() || {};
+        const blackPlayer = players.black;
+        const whitePlayer = players.white;
+
+        if (blackPlayer === myPlayerId) {
+            myRole = 'black';
+            turnIndicator.textContent += " (Ви граєте за чорних)";
+        } else if (whitePlayer === myPlayerId) {
+            myRole = 'white';
+            turnIndicator.textContent += " (Ви граєте за білих)";
+        } else if (!blackPlayer) {
+            // Якщо місце чорних вільне, займаємо його
+            set(ref(db, 'players/black'), myPlayerId);
+            myRole = 'black';
+            onDisconnect(ref(db, 'players/black')).remove(); // Якщо я закрию вкладку, моє місце звільниться
+        } else if (!whitePlayer) {
+            // Якщо місце білих вільне, займаємо його
+            set(ref(db, 'players/white'), myPlayerId);
+            myRole = 'white';
+            onDisconnect(ref(db, 'players/white')).remove(); // Якщо я закрию вкладку, моє місце звільниться
+        } else {
+            myRole = 'spectator'; // Обидва місця зайняті
+            turnIndicator.textContent += " (Ви глядач)";
+        }
+    }, { onlyOnce: true }); // Виконуємо лише один раз при завантаженні
+    // ----------------------------------------------------
+
+    // ... функції drawBoard, checkWinner, showWinner залишаються без змін ...
+    function drawBoard() { /* ... */ }
+    function checkWinner(x, y, color) { /* ... */ }
+    function showWinner(player) { /* ... */ }
+
+
+    // Слухаємо базу даних для черги ходу
+    onValue(currentRef, snapshot => {
+      current = snapshot.val() || "black";
+      const turnName = current === "black" ? "чорних" : "білих";
+      turnIndicator.textContent = `Хід ${turnName}`;
+      // Оновлюємо статус, враховуючи роль гравця
+      if (myRole && myRole !== 'spectator') {
+          turnIndicator.textContent += ` (Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})`;
+      } else if (myRole === 'spectator') {
+          turnIndicator.textContent += " (Ви глядач)";
+      }
+    });
+
+    // Обробка кліку по дошці
+    canvas.addEventListener("click", e => {
+        // ----------- ОНОВЛЕНА ЛОГІКА КЛІКУ -----------
+        if (myRole !== current) {
+            console.log(`Зараз хід ${current}, а ви граєте за ${myRole}.`);
+            return; // Не ваш хід, нічого не робимо
+        }
+        // ---------------------------------------------
+        
+        // ... подальша логіка кліку залишається такою ж ...
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.round((e.clientX - rect.left - cell / 2) / cell);
+        const y = Math.round((e.clientY - rect.top - cell / 2) / cell);
+        if (x < 0 || y < 0 || x >= size || y >= size) return;
+
+        if (!board[y][x]) {
+            const move = { x, y, color: current };
+            push(movesRef, move);
+            if (checkWinner(x, y, current)) {
+                setTimeout(() => showWinner(current), 100);
+                return;
+            }
+            set(currentRef, current === "black" ? "white" : "black");
+        }
+    });
+    
+    // При скиданні гри очищуємо і гравців
+    function resetGame() {
+        remove(movesRef);
+        set(currentRef, "black");
+        remove(playersRef); // ← Очищуємо ролі гравців
+        overlay.classList.add("hidden");
+        // Перезавантажуємо сторінку, щоб ролі перерозподілились
+        window.location.reload(); 
+    }
+    
+    // ... решта коду (слухачі кнопок, виклик drawBoard) ...
+
+  </script>
+</body>
+</html>
