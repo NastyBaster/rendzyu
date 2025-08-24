@@ -7,80 +7,71 @@
     body { display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #f0f0f0; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
     .hidden { display: none !important; }
     
-    #lobby { text-align: center; }
-    #create-game { font-size: 20px; padding: 15px 30px; cursor: pointer; }
+    /* Стилі для лобі */
+    .lobby-container { text-align: center; }
+    .lobby-container button { font-size: 20px; padding: 15px 30px; cursor: pointer; margin: 10px; }
+    #join-screen input { font-size: 24px; padding: 10px; text-align: center; width: 150px; margin-bottom: 10px; }
 
     #game-layout { display: flex; align-items: flex-start; gap: 20px; }
     #game-container { display: flex; flex-direction: column; align-items: center; }
+    #game-code-display { font-size: 18px; font-weight: bold; background: #fff; padding: 5px 10px; border-radius: 5px; margin-top: 5px; }
     canvas { background: #f9d58a; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); cursor: pointer; }
     button { margin-top: 10px; padding: 8px 15px; font-size: 16px; cursor: pointer; border: 1px solid #ccc; border-radius: 5px; }
     #turn-indicator { font-family: sans-serif; color: #333; height: 50px; margin-bottom: 5px; margin-top: 10px; text-align: center; }
     
-    /* Стилі для чату */
     #chat-container { width: 250px; height: 600px; display: flex; flex-direction: column; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 5px; }
-    #chat-container h3 { text-align: center; margin: 10px 0; }
-    #messages { flex-grow: 1; padding: 10px; overflow-y: auto; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
-    #messages p { margin: 0 0 8px 0; word-wrap: break-word; }
-    #messages span { font-weight: bold; }
-    #chat-form { display: flex; padding: 5px; }
-    #chat-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 3px; padding: 5px; }
+    /* ... інші стилі ... */
 
     #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     #winner-modal { background: white; padding: 25px 50px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
-    #winner-modal h2 { margin-top: 0; }
-    #play-again { background-color: #4CAF50; color: white; border: none; }
   </style>
 </head>
 <body>
 
-  <div id="lobby">
+  <div id="lobby" class="lobby-container">
     <h1>Рендзю</h1>
-    <button id="create-game">Створити нову гру</button>
+    <button id="create-game-btn">Створити гру</button>
+    <button id="join-game-btn">Приєднатися до гри</button>
+  </div>
+  
+  <div id="join-screen" class="lobby-container hidden">
+    <h2>Введіть код гри</h2>
+    <form id="join-form">
+      <input type="number" id="game-code-input" placeholder="Код з 3 цифр" required>
+      <button type="submit">Приєднатися</button>
+    </form>
+    <button id="back-to-lobby">Назад</button>
   </div>
 
   <div id="game-layout" class="hidden">
-    <div id="game-container">
-      <canvas id="board" width="600" height="600"></canvas>
-      <h2 id="turn-indicator">Завантаження...</h2>
-      <button id="reset">Нова гра</button>
-    </div>
-    <div id="chat-container">
-        <h3>Ігровий чат</h3>
-        <div id="messages"></div>
-        <form id="chat-form">
-            <input id="chat-input" type="text" placeholder="Ваше повідомлення..." autocomplete="off">
-            <button type="submit">»</button>
-        </form>
-    </div>
+    <!-- ... решта вашого HTML для гри ... -->
   </div>
 
   <div id="overlay" class="hidden">
     <div id="winner-modal">
       <h2 id="winner-message"></h2>
-      <button id="play-again">Грати ще раз</button>
+      <button id="play-again">Повернутись в лобі</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, onValue, set, push, remove, onDisconnect, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
-      authDomain: "rendzyu-ed6bf.firebaseapp.com",
-      databaseURL: "https://rendzyu-ed6bf-default-rtdb.firebaseio.com",
-      projectId: "rendzyu-ed6bf",
-      storageBucket: "rendzyu-ed6bf.firebasestorage.app",
-      messagingSenderId: "928258814163",
-      appId: "1:928258814163:web:48cbcdfaa01f9f030fe426",
-      measurementId: "G-SYK9RLDKQ5"
-    };
+    const firebaseConfig = { /* ... Ваші дані Firebase ... */ };
     
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     
+    // Елементи лобі
     const lobbyDiv = document.getElementById('lobby');
-    const createGameButton = document.getElementById('create-game');
+    const joinScreenDiv = document.getElementById('join-screen');
+    const createGameBtn = document.getElementById('create-game-btn');
+    const joinGameBtn = document.getElementById('join-game-btn');
+    const joinForm = document.getElementById('join-form');
+    const gameCodeInput = document.getElementById('game-code-input');
+    const backToLobbyBtn = document.getElementById('back-to-lobby');
+    
     const gameLayoutDiv = document.getElementById('game-layout');
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -91,215 +82,84 @@
         myName = prompt("Будь ласка, введіть ваше ім'я:") || 'Анонім';
         localStorage.setItem('playerName', myName);
     }
-
+    
+    // --- ЛОГІКА ЛОБІ ТА КІМНАТ ---
     if (gameId) {
         lobbyDiv.classList.add('hidden');
+        joinScreenDiv.classList.add('hidden');
         gameLayoutDiv.classList.remove('hidden');
         initGame(gameId);
     }
 
-    createGameButton.addEventListener('click', () => {
-        const newGameId = 'game-' + Date.now();
+    createGameBtn.addEventListener('click', () => {
+        const newGameId = Math.floor(100 + Math.random() * 900).toString(); // Код 100-999
         window.location.href = `?game=${newGameId}`;
     });
+    
+    joinGameBtn.addEventListener('click', () => {
+        lobbyDiv.classList.add('hidden');
+        joinScreenDiv.classList.remove('hidden');
+    });
+    
+    backToLobbyBtn.addEventListener('click', () => {
+        joinScreenDiv.classList.add('hidden');
+        lobbyDiv.classList.remove('hidden');
+    });
 
-    function initGame(currentGameId) {
-        const canvas = document.getElementById("board");
-        const ctx = canvas.getContext("2d");
-        const resetButton = document.getElementById("reset");
-        const turnIndicator = document.getElementById("turn-indicator");
-        const overlay = document.getElementById("overlay");
-        const winnerMessage = document.getElementById("winner-message");
-        const playAgainButton = document.getElementById("play-again");
-        const messagesDiv = document.getElementById('messages');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-
-        let myPlayerId = sessionStorage.getItem('playerId');
-        if (!myPlayerId) {
-          myPlayerId = Date.now().toString() + Math.random().toString();
-          sessionStorage.setItem('playerId', myPlayerId);
-        }
-        let myRole = null;
-        let players = {};
-
-        const size = 15;
-        const cell = canvas.width / size;
-        let board = Array.from({ length: size }, () => Array(size).fill(null));
-        let current = "black";
-        let lastMove = null;
-
-        const gameRef = ref(db, `games/${currentGameId}`);
-        const movesRef = ref(db, `games/${currentGameId}/moves`);
-        const currentRef = ref(db, `games/${currentGameId}/current`);
-        const playersRef = ref(db, `games/${currentGameId}/players`);
-        const lastMoveRef = ref(db, `games/${currentGameId}/lastMove`);
-        const chatRef = ref(db, `games/${currentGameId}/chat`);
-
-        onValue(playersRef, (snapshot) => {
-            players = snapshot.val() || {};
-            if (!myRole) assignRole(); 
-            updateTurnIndicator(); 
-        });
-
-        function assignRole() {
-            const blackPlayer = players.black;
-            const whitePlayer = players.white;
-
-            if (blackPlayer?.id === myPlayerId) myRole = 'black';
-            else if (whitePlayer?.id === myPlayerId) myRole = 'white';
-            else if (!blackPlayer) {
-                myRole = 'black';
-                const playerInfo = { id: myPlayerId, name: myName };
-                set(ref(db, `games/${currentGameId}/players/black`), playerInfo);
-                onDisconnect(ref(db, `games/${currentGameId}/players/black`)).remove();
-            } else if (!whitePlayer) {
-                myRole = 'white';
-                const playerInfo = { id: myPlayerId, name: myName };
-                set(ref(db, `games/${currentGameId}/players/white`), playerInfo);
-                onDisconnect(ref(db, `games/${currentGameId}/players/white`)).remove();
+    joinForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = gameCodeInput.value;
+        if (code && code.length === 3) {
+            const gameRef = ref(db, `games/${code}`);
+            const snapshot = await get(gameRef);
+            if (snapshot.exists()) {
+                window.location.href = `?game=${code}`;
             } else {
-                myRole = 'spectator';
+                alert("Гра з таким кодом не знайдена. Перевірте код.");
             }
+        } else {
+            alert("Будь ласка, введіть код з 3 цифр.");
         }
+    });
+
+    // --- ОСНОВНА ЛОГІКА ГРИ ---
+    function initGame(currentGameId) {
+        // ... тут весь ваш код initGame, але з однією зміною в resetGame ...
+        const winnerRef = ref(db, `games/${currentGameId}/winner`); // <-- НОВЕ ПОСИЛАННЯ
+
+        // ...
         
-        function drawBoard() {
-            ctx.clearRect(0,0,canvas.width,canvas.height); 
-            ctx.strokeStyle="#000"; 
-            ctx.lineWidth=1;
-            for(let i=0;i<size;i++){ 
-                ctx.beginPath(); 
-                ctx.moveTo(cell/2,cell/2+i*cell); 
-                ctx.lineTo(canvas.width-cell/2,cell/2+i*cell); 
-                ctx.stroke(); 
-                ctx.beginPath(); 
-                ctx.moveTo(cell/2+i*cell,cell/2); 
-                ctx.lineTo(cell/2+i*cell,canvas.height-cell/2); 
-                ctx.stroke(); 
+        onValue(winnerRef, (snapshot) => {
+            const winner = snapshot.val();
+            if (winner) {
+                showWinner(winner);
             }
-            for(let y=0;y<size;y++){ 
-                for(let x=0;x<size;x++){ 
-                    if(board[y][x]){ 
-                        const stoneX = cell/2+x*cell; 
-                        const stoneY = cell/2+y*cell; 
-                        ctx.beginPath(); 
-                        ctx.arc(stoneX,stoneY,cell*.4,0,Math.PI*2); 
-                        ctx.fillStyle=board[y][x]; 
-                        ctx.shadowColor="rgba(0,0,0,0.3)"; 
-                        ctx.shadowBlur=5; ctx.fill(); 
-                        ctx.shadowBlur=0; 
-                        if(lastMove && lastMove.x === x && lastMove.y === y){ 
-                            ctx.beginPath(); 
-                            ctx.arc(stoneX,stoneY,cell*.15,0,Math.PI*2); 
-                            ctx.fillStyle=board[y][x]==='black'?'white':'black'; 
-                            ctx.fill(); 
-                        } 
-                    } 
-                } 
-            }
-        }
-        
-        function checkWinner(x,y,c){ 
-            const d=[[[1,0],[-1,0]],[[0,1],[0,-1]],[[1,1],[-1,-1]],[[1,-1],[-1,1]]]; 
-            for(let dir of d){ 
-                let count=1; 
-                for(let[dx,dy] of dir){ 
-                    let nx=x,ny=y; 
-                    while(true){ 
-                        nx+=dx;ny+=dy; 
-                        if(nx<0||ny<0||nx>=size||ny>=size||board[ny][nx]!==c)break; 
-                        count++; 
-                    } 
-                } 
-                if(count>=5)return true; 
-            } 
-            return false; 
-        }
-        
-        function showWinner(p){ 
-            const winnerName = players[p]?.name || (p === 'black' ? 'Чорні' : 'Білі'); 
-            winnerMessage.textContent=`${winnerName} перемогли!`; 
-            overlay.classList.remove("hidden"); 
-        }
-        
-        onValue(movesRef,s=>{ 
-            const m=s.val()||{}; 
-            board=Array.from({length:size},()=>Array(size).fill(null)); 
-            for(let k in m){ 
-                const{x,y,color}=m[k]; 
-                board[y][x]=color; 
-            } 
-            drawBoard(); 
         });
         
-        onValue(lastMoveRef, s => { 
-            lastMove = s.val(); 
-            drawBoard(); 
-        });
-
-        function updateTurnIndicator() {
-            const turnPlayer = current === "black" ? players.black : players.white;
-            const turnName = turnPlayer?.name || (current === "black" ? "Чорних" : "Білих");
-            let statusText = `Хід: ${turnName}`;
-            if (myRole && myRole !== 'spectator') {
-                statusText += `<br><small>(Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})</small>`;
-            } else if (myRole === 'spectator') {
-                statusText += "<br><small>(Ви глядач)</small>";
-            }
-            turnIndicator.innerHTML = statusText;
-        }
-
-        onValue(currentRef,s=>{ 
-            current=s.val()||"black"; 
-            updateTurnIndicator(); 
-        });
-
         canvas.addEventListener("click",e=>{ 
-            if(myRole!==current||!overlay.classList.contains('hidden'))return; 
-            const r=canvas.getBoundingClientRect(); 
-            const x=Math.round((e.clientX-r.left-cell/2)/cell); 
-            const y=Math.round((e.clientY-r.top-cell/2)/cell); 
-            if(x<0||y<0||x>=size||y>=size||board[y][x])return; 
-            const move={x,y,color:current}; 
-            push(movesRef,move); 
-            set(lastMoveRef, {x, y}); 
+            // ...
             if(checkWinner(x,y,current)){
-                setTimeout(()=>showWinner(current),100);
+                set(winnerRef, current); // <-- ЗАПИСУЄМО ПЕРЕМОЖЦЯ В БАЗУ
                 return;
             } 
             set(currentRef,current==="black"?"white":"black"); 
         });
         
-        chatForm.addEventListener('submit', e => {
-            e.preventDefault();
-            const messageText = chatInput.value.trim();
-            if (messageText) {
-                push(chatRef, { name: myName, text: messageText });
-                chatInput.value = '';
-            }
-        });
-
-        onValue(chatRef, snapshot => {
-            messagesDiv.innerHTML = '';
-            snapshot.forEach(childSnapshot => {
-                const message = childSnapshot.val();
-                const p = document.createElement('p');
-                const nameSpan = document.createElement('span');
-                nameSpan.textContent = `${message.name}: `;
-                p.appendChild(nameSpan);
-                p.append(document.createTextNode(message.text));
-                messagesDiv.appendChild(p);
-            });
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
-
         function resetGame() { 
             remove(gameRef); 
-            overlay.classList.add("hidden"); 
+            window.location.href = window.location.pathname; // <-- Повертаємось в лобі
         }
+        
+        playAgainButton.textContent = "Повернутись в лобі"; // <-- Змінюємо текст кнопки
         
         resetButton.addEventListener("click", resetGame);
         playAgainButton.addEventListener("click", resetGame);
+        
+        // Додаємо відображення коду гри
+        const codeDisplay = document.createElement('p');
+        codeDisplay.id = 'game-code-display';
+        codeDisplay.textContent = `Код гри: ${currentGameId}`;
+        gameContainer.appendChild(codeDisplay);
         
         drawBoard();
     }
