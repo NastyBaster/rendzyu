@@ -65,7 +65,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
     import { getDatabase, ref, onValue, set, push, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    // ПОВЕРНУВ ВАШІ ПРАВИЛЬНІ ДАНІ
     const firebaseConfig = {
       apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
       authDomain: "rendzyu-ed6bf.firebaseapp.com",
@@ -165,4 +164,145 @@
         }
         
         function drawBoard() {
-            ctx.clearRect(0,0,canvas.width,canvas.height); ctx.strokeStyle="#000"; ctx
+            ctx.clearRect(0,0,canvas.width,canvas.height); 
+            ctx.strokeStyle="#000"; 
+            ctx.lineWidth=1;
+            for(let i=0;i<size;i++){ 
+                ctx.beginPath(); 
+                ctx.moveTo(cell/2,cell/2+i*cell); 
+                ctx.lineTo(canvas.width-cell/2,cell/2+i*cell); 
+                ctx.stroke(); 
+                ctx.beginPath(); 
+                ctx.moveTo(cell/2+i*cell,cell/2); 
+                ctx.lineTo(cell/2+i*cell,canvas.height-cell/2); 
+                ctx.stroke(); 
+            }
+            for(let y=0;y<size;y++){ 
+                for(let x=0;x<size;x++){ 
+                    if(board[y][x]){ 
+                        const stoneX = cell/2+x*cell; 
+                        const stoneY = cell/2+y*cell; 
+                        ctx.beginPath(); 
+                        ctx.arc(stoneX,stoneY,cell*.4,0,Math.PI*2); 
+                        ctx.fillStyle=board[y][x]; 
+                        ctx.shadowColor="rgba(0,0,0,0.3)"; 
+                        ctx.shadowBlur=5; ctx.fill(); 
+                        ctx.shadowBlur=0; 
+                        if(lastMove && lastMove.x === x && lastMove.y === y){ 
+                            ctx.beginPath(); 
+                            ctx.arc(stoneX,stoneY,cell*.15,0,Math.PI*2); 
+                            ctx.fillStyle=board[y][x]==='black'?'white':'black'; 
+                            ctx.fill(); 
+                        } 
+                    } 
+                } 
+            }
+        }
+        
+        function checkWinner(x,y,c){ 
+            const d=[[[1,0],[-1,0]],[[0,1],[0,-1]],[[1,1],[-1,-1]],[[1,-1],[-1,1]]]; 
+            for(let dir of d){ 
+                let count=1; 
+                for(let[dx,dy] of dir){ 
+                    let nx=x,ny=y; 
+                    while(true){ 
+                        nx+=dx;ny+=dy; 
+                        if(nx<0||ny<0||nx>=size||ny>=size||board[ny][nx]!==c)break; 
+                        count++; 
+                    } 
+                } 
+                if(count>=5)return true; 
+            } 
+            return false; 
+        }
+        
+        function showWinner(p){ 
+            const winnerName = players[p]?.name || (p === 'black' ? 'Чорні' : 'Білі'); 
+            winnerMessage.textContent=`${winnerName} перемогли!`; 
+            overlay.classList.remove("hidden"); 
+        }
+        
+        onValue(movesRef,s=>{ 
+            const m=s.val()||{}; 
+            board=Array.from({length:size},()=>Array(size).fill(null)); 
+            for(let k in m){ 
+                const{x,y,color}=m[k]; 
+                board[y][x]=color; 
+            } 
+            drawBoard(); 
+        });
+        
+        onValue(lastMoveRef, s => { 
+            lastMove = s.val(); 
+            drawBoard(); 
+        });
+
+        function updateTurnIndicator() {
+            const turnPlayer = current === "black" ? players.black : players.white;
+            const turnName = turnPlayer?.name || (current === "black" ? "Чорних" : "Білих");
+            let statusText = `Хід: ${turnName}`;
+            if (myRole && myRole !== 'spectator') {
+                statusText += `<br><small>(Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})</small>`;
+            } else if (myRole === 'spectator') {
+                statusText += "<br><small>(Ви глядач)</small>";
+            }
+            turnIndicator.innerHTML = statusText;
+        }
+
+        onValue(currentRef,s=>{ 
+            current=s.val()||"black"; 
+            updateTurnIndicator(); 
+        });
+
+        canvas.addEventListener("click",e=>{ 
+            if(myRole!==current||!overlay.classList.contains('hidden'))return; 
+            const r=canvas.getBoundingClientRect(); 
+            const x=Math.round((e.clientX-r.left-cell/2)/cell); 
+            const y=Math.round((e.clientY-r.top-cell/2)/cell); 
+            if(x<0||y<0||x>=size||y>=size||board[y][x])return; 
+            const move={x,y,color:current}; 
+            push(movesRef,move); 
+            set(lastMoveRef, {x, y}); 
+            if(checkWinner(x,y,current)){
+                setTimeout(()=>showWinner(current),100);
+                return;
+            } 
+            set(currentRef,current==="black"?"white":"black"); 
+        });
+        
+        chatForm.addEventListener('submit', e => {
+            e.preventDefault();
+            const messageText = chatInput.value.trim();
+            if (messageText) {
+                push(chatRef, { name: myName, text: messageText });
+                chatInput.value = '';
+            }
+        });
+
+        onValue(chatRef, snapshot => {
+            messagesDiv.innerHTML = '';
+            snapshot.forEach(childSnapshot => {
+                const message = childSnapshot.val();
+                const p = document.createElement('p');
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = `${message.name}: `;
+                p.appendChild(nameSpan);
+                p.append(document.createTextNode(message.text));
+                messagesDiv.appendChild(p);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        function resetGame() { 
+            remove(gameRef); 
+            overlay.classList.add("hidden"); 
+        }
+        
+        resetButton.addEventListener("click", resetGame);
+        playAgainButton.addEventListener("click", resetGame);
+        
+        drawBoard();
+    }
+  </script>
+</body>
+</html>
