@@ -17,248 +17,217 @@
 
     #game-layout { display: flex; align-items: flex-start; gap: 20px; }
     #game-container { display: flex; flex-direction: column; align-items: center; }
-    #game-code-display { font-size: 18px; font-weight: bold; background: #fff; padding: 5px 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #ddd; }
+    #game-code-display { font-size: 16px; font-weight: bold; background: #fff; padding: 5px 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #ddd; }
     canvas { background: #f9d58a; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); cursor: pointer; }
     #turn-indicator { font-family: sans-serif; color: #333; height: 50px; margin-bottom: 5px; margin-top: 10px; text-align: center; }
     
-    #chat-container { width: 250px; height: 600px; display: flex; flex-direction: column; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 5px; }
-    #chat-container h3 { text-align: center; margin: 10px 0; }
-    #messages { flex-grow: 1; padding: 10px; overflow-y: auto; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
-    #messages p { margin: 0 0 8px 0; word-wrap: break-word; }
-    #messages span { font-weight: bold; }
-    #chat-form { display: flex; padding: 5px; }
-    #chat-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 3px; padding: 5px; }
+    /* СТИЛІ ДЛЯ СТАТИСТИКИ І ЧАТУ */
+    .side-panel { width: 200px; height: 600px; display: flex; flex-direction: column; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 5px; padding: 10px; box-sizing: border-box; }
+    .timer-box { margin-bottom: 15px; }
+    .timer-box h3 { text-align: center; margin: 5px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .current-time { font-size: 24px; font-weight: bold; text-align: center; color: #007bff; margin-bottom: 10px; }
+    .time-list { list-style-type: decimal; padding-left: 25px; margin: 0; font-size: 14px; max-height: 150px; overflow-y: auto; }
+    .time-list li.fastest-move { color: green; font-weight: bold; }
+    .time-list li.slowest-move { color: red; font-weight: bold; }
+    .total-time { text-align: center; font-weight: bold; margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px; }
 
-    #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-    #winner-modal { background: white; padding: 25px 50px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
-    #winner-modal h2 { margin-top: 0; }
-    #play-again { background-color: #4CAF50; color: white; border: none; }
+    #chat-container { width: 250px; /* ... інші стилі чату ... */ }
+
+    #overlay { position: fixed; /* ... інші стилі оверлею ... */ }
+    #winner-modal { background: white; padding: 25px 40px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    #winner-modal button { margin: 5px; }
+    #final-stats { margin-top: 15px; text-align: left; font-size: 14px; }
   </style>
 </head>
 <body>
 
-  <div id="lobby" class="lobby-container">
-    <h1>Рендзю</h1>
-    <button id="create-game-btn">Створити гру</button>
-    <button id="join-game-btn">Приєднатися до гри</button>
-  </div>
-  
-  <div id="join-screen" class="lobby-container hidden">
-    <h2>Введіть код гри</h2>
-    <form id="join-form">
-      <input type="number" id="game-code-input" placeholder="Код з 3 цифр" required>
-      <button type="submit">Приєднатися</button>
-    </form>
-    <button id="back-to-lobby">Назад</button>
-  </div>
+  <!-- Лобі, як і раніше -->
+  <div id="lobby" class="lobby-container"> ... </div>
+  <div id="join-screen" class="lobby-container hidden"> ... </div>
 
   <div id="game-layout" class="hidden">
+    <!-- ↓↓↓ НОВА КОЛОНКА ДЛЯ СТАТИСТИКИ ↓↓↓ -->
+    <div id="stats-container" class="side-panel">
+      <div id="black-timer-box" class="timer-box">
+        <h3 id="black-player-name">Чорні (0)</h3>
+        <div id="black-current-time" class="current-time">0.0с</div>
+        <ol id="black-time-list" class="time-list"></ol>
+        <div id="black-total-time" class="total-time">Всього: 0.0с</div>
+      </div>
+      <div id="white-timer-box" class="timer-box">
+        <h3 id="white-player-name">Білі (0)</h3>
+        <div id="white-current-time" class="current-time">0.0с</div>
+        <ol id="white-time-list" class="time-list"></ol>
+        <div id="white-total-time" class="total-time">Всього: 0.0с</div>
+      </div>
+    </div>
+
     <div id="game-container">
       <canvas id="board" width="600" height="600"></canvas>
       <h2 id="turn-indicator">Завантаження...</h2>
       <button id="reset">Завершити гру</button>
     </div>
-    <div id="chat-container">
+
+    <div id="chat-container" class="side-panel">
         <h3>Ігровий чат</h3>
         <div id="messages"></div>
-        <form id="chat-form">
-            <input id="chat-input" type="text" placeholder="Ваше повідомлення..." autocomplete="off">
-            <button type="submit">»</button>
-        </form>
+        <form id="chat-form"> ... </form>
     </div>
   </div>
 
   <div id="overlay" class="hidden">
     <div id="winner-modal">
       <h2 id="winner-message"></h2>
-      <button id="play-again"></button>
+      <div id="final-stats"></div> <!-- Для фінальної статистики -->
+      <button id="rematch-btn">Грати ще раз</button>
+      <button id="back-to-lobby-from-game">Повернутись в лобі</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, push, remove, onDisconnect, get } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, onValue, set, push, remove, onDisconnect, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
-      authDomain: "rendzyu-ed6bf.firebaseapp.com",
-      databaseURL: "https://rendzyu-ed6bf-default-rtdb.firebaseio.com",
-      projectId: "rendzyu-ed6bf",
-      storageBucket: "rendzyu-ed6bf.firebasestorage.app",
-      messagingSenderId: "928258814163",
-      appId: "1:928258814163:web:48cbcdfaa01f9f030fe426",
-      measurementId: "G-SYK9RLDKQ5"
-    };
-    
+    const firebaseConfig = { /* ... Ваші дані ... */ };
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     
-    const lobbyDiv = document.getElementById('lobby');
-    const joinScreenDiv = document.getElementById('join-screen');
-    const createGameBtn = document.getElementById('create-game-btn');
-    const joinGameBtn = document.getElementById('join-game-btn');
-    const joinForm = document.getElementById('join-form');
-    const gameCodeInput = document.getElementById('game-code-input');
-    const backToLobbyBtn = document.getElementById('back-to-lobby');
-    const gameLayoutDiv = document.getElementById('game-layout');
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const gameId = urlParams.get('game');
-
-    let myName = localStorage.getItem('playerName');
-    if (!myName) {
-        myName = prompt("Будь ласка, введіть ваше ім'я:") || 'Анонім';
-        localStorage.setItem('playerName', myName);
-    }
-    
-    if (gameId) {
-        lobbyDiv.classList.add('hidden');
-        joinScreenDiv.classList.add('hidden');
-        gameLayoutDiv.classList.remove('hidden');
-        initGame(gameId);
-    }
-
-    createGameBtn.addEventListener('click', () => {
-        const newGameId = Math.floor(100 + Math.random() * 900).toString();
-        window.location.href = `?game=${newGameId}`;
-    });
-    
-    joinGameBtn.addEventListener('click', () => {
-        lobbyDiv.classList.add('hidden');
-        joinScreenDiv.classList.remove('hidden');
-    });
-    
-    backToLobbyBtn.addEventListener('click', () => {
-        joinScreenDiv.classList.add('hidden');
-        lobbyDiv.classList.remove('hidden');
-    });
-
-    joinForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = gameCodeInput.value;
-        if (code && code.length === 3) {
-            const gameRef = ref(db, `games/${code}`);
-            const snapshot = await get(gameRef);
-            if (snapshot.exists()) {
-                window.location.href = `?game=${code}`;
-            } else {
-                alert("Гра з таким кодом не знайдена. Перевірте код.");
-            }
-        } else {
-            alert("Будь ласка, введіть код з 3 цифр.");
-        }
-    });
+    // ... Код логіки лобі залишається без змін ...
 
     function initGame(currentGameId) {
-        const canvas = document.getElementById("board");
-        const ctx = canvas.getContext("2d");
-        const resetButton = document.getElementById("reset");
-        const turnIndicator = document.getElementById("turn-indicator");
-        const overlay = document.getElementById("overlay");
-        const winnerMessage = document.getElementById("winner-message");
-        const playAgainButton = document.getElementById("play-again");
-        const messagesDiv = document.getElementById('messages');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-        const gameContainer = document.getElementById('game-container');
-
-        let myPlayerId = sessionStorage.getItem('playerId');
-        if (!myPlayerId) {
-          myPlayerId = Date.now().toString() + Math.random().toString();
-          sessionStorage.setItem('playerId', myPlayerId);
-        }
-        let myRole = null;
-        let players = {};
-
-        const size = 15;
-        const cell = canvas.width / size;
-        let board = Array.from({ length: size }, () => Array(size).fill(null));
-        let current = "black";
-        let lastMove = null;
-
-        const gameRef = ref(db, `games/${currentGameId}`);
-        const movesRef = ref(db, `games/${currentGameId}/moves`);
-        const currentRef = ref(db, `games/${currentGameId}/current`);
-        const playersRef = ref(db, `games/${currentGameId}/players`);
-        const lastMoveRef = ref(db, `games/${currentGameId}/lastMove`);
-        const chatRef = ref(db, `games/${currentGameId}/chat`);
-        const winnerRef = ref(db, `games/${currentGameId}/winner`);
-
-        onValue(playersRef, (snapshot) => {
-            players = snapshot.val() || {};
-            if (!myRole) assignRole(); 
-            updateTurnIndicator(); 
-        });
-
-        function assignRole() {
-            const blackPlayer = players.black;
-            const whitePlayer = players.white;
-            if (blackPlayer?.id === myPlayerId) myRole = 'black';
-            else if (whitePlayer?.id === myPlayerId) myRole = 'white';
-            else if (!blackPlayer) {
-                myRole = 'black';
-                set(ref(db, `games/${currentGameId}/players/black`), { id: myPlayerId, name: myName });
-                onDisconnect(ref(db, `games/${currentGameId}/players/black`)).remove();
-            } else if (!whitePlayer) {
-                myRole = 'white';
-                set(ref(db, `games/${currentGameId}/players/white`), { id: myPlayerId, name: myName });
-                onDisconnect(ref(db, `games/${currentGameId}/players/white`)).remove();
-            } else {
-                myRole = 'spectator';
-            }
-        }
+        // ... Отримуємо елементи сторінки ...
+        const blackTimerBox = {
+            name: document.getElementById('black-player-name'),
+            currentTime: document.getElementById('black-current-time'),
+            timeList: document.getElementById('black-time-list'),
+            totalTime: document.getElementById('black-total-time'),
+        };
+        const whiteTimerBox = { /* ... аналогічно для білих ... */ };
         
-        function drawBoard() {
-            ctx.clearRect(0,0,canvas.width,canvas.height); ctx.strokeStyle="#000"; ctx.lineWidth=1;
-            for(let i=0;i<size;i++){ ctx.beginPath(); ctx.moveTo(cell/2,cell/2+i*cell); ctx.lineTo(canvas.width-cell/2,cell/2+i*cell); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cell/2+i*cell,cell/2); ctx.lineTo(cell/2+i*cell,canvas.height-cell/2); ctx.stroke(); }
-            for(let y=0;y<size;y++){ for(let x=0;x<size;x++){ if(board[y][x]){ const stoneX = cell/2+x*cell; const stoneY = cell/2+y*cell; ctx.beginPath(); ctx.arc(stoneX,stoneY,cell*.4,0,Math.PI*2); ctx.fillStyle=board[y][x]; ctx.shadowColor="rgba(0,0,0,0.3)"; ctx.shadowBlur=5; ctx.fill(); ctx.shadowBlur=0; if(lastMove && lastMove.x === x && lastMove.y === y){ ctx.beginPath(); ctx.arc(stoneX,stoneY,cell*.15,0,Math.PI*2); ctx.fillStyle=board[y][x]==='black'?'white':'black'; ctx.fill(); } } } }
-        }
-        
-        function checkWinner(x,y,c){ const d=[[[1,0],[-1,0]],[[0,1],[0,-1]],[[1,1],[-1,-1]],[[1,-1],[-1,1]]]; for(let dir of d){ let count=1; for(let[dx,dy] of dir){ let nx=x,ny=y; while(true){ nx+=dx;ny+=dy; if(nx<0||ny<0||nx>=size||ny>=size||board[ny][nx]!==c)break; count++; } } if(count>=5)return true; } return false; }
-        
-        function showWinner(winnerColor){ const winnerName = players[winnerColor]?.name || (winnerColor === 'black' ? 'Чорні' : 'Білі'); winnerMessage.textContent=`${winnerName} перемогли!`; overlay.classList.remove("hidden"); }
-        
-        onValue(winnerRef, (snapshot) => {
-            const winner = snapshot.val();
-            if (winner) {
-                showWinner(winner);
+        // ... Решта змінних ...
+        let currentTimerInterval = null;
+
+        // Нові посилання на Firebase
+        const scoreRef = ref(db, `games/${currentGameId}/score`);
+        const turnStartTimeRef = ref(db, `games/${currentGameId}/turnStartTime`);
+        const moveTimesRef = ref(db, `games/${currentGameId}/moveTimes`);
+        // ... Решта посилань ...
+
+        // Запускаємо таймер, як тільки починається хід
+        onValue(turnStartTimeRef, (snapshot) => {
+            clearInterval(currentTimerInterval);
+            const startTime = snapshot.val();
+            if (startTime) {
+                currentTimerInterval = setInterval(() => {
+                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                    if (current === 'black') blackTimerBox.currentTime.textContent = `${elapsed}с`;
+                    else whiteTimerBox.currentTime.textContent = `${elapsed}с`;
+                }, 100);
             }
         });
 
-        onValue(movesRef,s=>{ const m=s.val()||{}; board=Array.from({length:size},()=>Array(size).fill(null)); for(let k in m){ const{x,y,color}=m[k]; board[y][x]=color; } drawBoard(); });
-        onValue(lastMoveRef, s => { lastMove = s.val(); drawBoard(); });
+        // Оновлюємо статистику при зміні ходів
+        onValue(moveTimesRef, (snapshot) => {
+            const allMoveTimes = snapshot.val() || { black: [], white: [] };
+            updateStatsPanel('black', allMoveTimes.black || []);
+            updateStatsPanel('white', allMoveTimes.white || []);
+        });
 
-        function updateTurnIndicator() {
-            const turnPlayer = current === "black" ? players.black : players.white;
-            const turnName = turnPlayer?.name || (current === "black" ? "Чорних" : "Білих");
-            let statusText = `Хід: ${turnName}`;
-            if (myRole && myRole !== 'spectator') {
-                statusText += `<br><small>(Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})</small>`;
-            } else if (myRole === 'spectator') {
-                statusText += "<br><small>(Ви глядач)</small>";
+        // Оновлюємо рахунок
+        onValue(scoreRef, (snapshot) => {
+            const score = snapshot.val() || { black: 0, white: 0 };
+            const blackName = players.black?.name || "Чорні";
+            const whiteName = players.white?.name || "Білі";
+            blackTimerBox.name.textContent = `${blackName} (${score.black})`;
+            whiteTimerBox.name.textContent = `${whiteName} (${score.white})`;
+        });
+        
+        // Функція для оновлення панелі статистики
+        function updateStatsPanel(player, times) {
+            const box = player === 'black' ? blackTimerBox : whiteTimerBox;
+            box.timeList.innerHTML = '';
+            if (times.length === 0) {
+                box.totalTime.textContent = 'Всього: 0.0с';
+                return;
             }
-            turnIndicator.innerHTML = statusText;
+
+            const fastest = Math.min(...times);
+            const slowest = Math.max(...times);
+            
+            times.forEach(time => {
+                const li = document.createElement('li');
+                li.textContent = `${time.toFixed(1)}с`;
+                if (time === fastest) li.classList.add('fastest-move');
+                if (time === slowest) li.classList.add('slowest-move');
+                box.timeList.appendChild(li);
+            });
+
+            const total = times.reduce((sum, t) => sum + t, 0);
+            box.totalTime.textContent = `Всього: ${total.toFixed(1)}с`;
         }
+        
+        // Логіка кліку по дошці
+        canvas.addEventListener("click", async (e) => {
+            if (myRole !== current || !overlay.classList.contains('hidden')) return;
+            
+            const startTimeSnapshot = await get(turnStartTimeRef);
+            const startTime = startTimeSnapshot.val();
+            const moveDuration = startTime ? (Date.now() - startTime) / 1000 : 0;
 
-        onValue(currentRef,s=>{ current=s.val()||"black"; updateTurnIndicator(); });
+            const moveTimesSnapshot = await get(moveTimesRef);
+            const currentMoveTimes = moveTimesSnapshot.val() || { black: [], white: [] };
+            if (!currentMoveTimes[current]) currentMoveTimes[current] = [];
+            currentMoveTimes[current].push(moveDuration);
+            set(moveTimesRef, currentMoveTimes);
 
-        canvas.addEventListener("click",e=>{ if(myRole!==current||!overlay.classList.contains('hidden'))return; const r=canvas.getBoundingClientRect(); const x=Math.round((e.clientX-r.left-cell/2)/cell); const y=Math.round((e.clientY-r.top-cell/2)/cell); if(x<0||y<0||x>=size||y>=size||board[y][x])return; const move={x,y,color:current}; push(movesRef,move); set(lastMoveRef, {x, y}); if(checkWinner(x,y,current)){set(winnerRef, current);return;} set(currentRef,current==="black"?"white":"black"); });
-        
-        chatForm.addEventListener('submit', e => { e.preventDefault(); const messageText = chatInput.value.trim(); if (messageText) { push(chatRef, { name: myName, text: messageText }); chatInput.value = ''; } });
-        onValue(chatRef, snapshot => { messagesDiv.innerHTML = ''; snapshot.forEach(childSnapshot => { const message = childSnapshot.val(); const p = document.createElement('p'); const nameSpan = document.createElement('span'); nameSpan.textContent = `${message.name}: `; p.appendChild(nameSpan); p.append(document.createTextNode(message.text)); messagesDiv.appendChild(p); }); messagesDiv.scrollTop = messagesDiv.scrollHeight; });
+            // ... Решта логіки ходу (push(movesRef), set(lastMoveRef)) ...
+            
+            if (checkWinner(x, y, current)) {
+                const scoreSnapshot = await get(scoreRef);
+                const currentScore = scoreSnapshot.val() || { black: 0, white: 0 };
+                currentScore[current]++;
+                set(scoreRef, currentScore); // Оновлюємо рахунок
+                set(winnerRef, current); // Оголошуємо переможця
+                return;
+            }
+            
+            set(currentRef, current === "black" ? "white" : "black");
+            set(turnStartTimeRef, serverTimestamp()); // Запускаємо годинник для наступного гравця
+        });
 
-        function resetGame() { remove(gameRef); window.location.href = window.location.pathname; }
+        // Оновлена функція показу переможця
+        async function showWinner(winnerColor) {
+            const winnerName = players[winnerColor]?.name || (winnerColor === 'black' ? 'Чорні' : 'Білі');
+            const scoreSnapshot = await get(scoreRef);
+            const finalScore = scoreSnapshot.val() || { black: 0, white: 0 };
+            const moveTimesSnapshot = await get(moveTimesRef);
+            const finalMoveTimes = moveTimesSnapshot.val() || { black: [], white: [] };
+            
+            const blackTotal = (finalMoveTimes.black || []).reduce((s, t) => s + t, 0).toFixed(1);
+            const whiteTotal = (finalMoveTimes.white || []).reduce((s, t) => s + t, 0).toFixed(1);
+
+            winnerMessage.textContent = `${winnerName} перемогли!`;
+            document.getElementById('final-stats').innerHTML = `
+                <p><strong>Фінальний рахунок: ${finalScore.black} : ${finalScore.white}</strong></p>
+                <p>${players.black?.name || "Чорні"}: ${blackTotal}с</p>
+                <p>${players.white?.name || "Білі"}: ${whiteTotal}с</p>
+            `;
+            overlay.classList.remove("hidden");
+        }
         
-        playAgainButton.textContent = "Повернутись в лобі";
-        resetButton.addEventListener("click", resetGame);
-        playAgainButton.addEventListener("click", resetGame);
+        // Логіка для реваншу
+        function startRematch() {
+            // Скидаємо все, КРІМ рахунку (score) та гравців (players)
+            remove(movesRef);
+            set(currentRef, "black");
+            set(turnStartTimeRef, serverTimestamp());
+            remove(winnerRef);
+            remove(lastMoveRef);
+            remove(moveTimesRef); // Очищуємо історію часу
+            overlay.classList.add("hidden");
+        }
         
-        const codeDisplay = document.createElement('p');
-        codeDisplay.id = 'game-code-display';
-        codeDisplay.textContent = `Код гри: ${currentGameId}`;
-        gameContainer.appendChild(codeDisplay);
-        
-        drawBoard();
+        rematchBtn.addEventListener("click", startRematch);
     }
   </script>
 </body>
