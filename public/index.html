@@ -7,21 +7,25 @@
     body { display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #f0f0f0; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
     .hidden { display: none !important; }
     
-    .lobby-container { text-align: center; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-    .lobby-container button { font-size: 20px; padding: 15px 30px; cursor: pointer; margin: 10px; border-radius: 8px; border: none; color: white; }
-    #create-game-btn { background-color: #28a745; }
-    #join-game-btn { background-color: #007bff; }
-    #join-screen input { font-size: 24px; padding: 10px; text-align: center; width: 150px; margin-bottom: 10px; border: 2px solid #ccc; border-radius: 5px; }
-    #join-screen button { background-color: #007bff; }
-    #back-to-lobby { background-color: #6c757d; }
-
+    .lobby-container { text-align: center; background: white; padding: 30px 40px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); width: 320px; box-sizing: border-box; }
+    .lobby-container .button-group { display: flex; flex-direction: column; gap: 15px; width: 100%; }
+    .lobby-container button { font-size: 18px; padding: 12px 24px; cursor: pointer; border-radius: 8px; border: none; color: white; width: 100%; box-sizing: border-box; }
+    #create-game-btn, #join-game-btn { background-color: #17a2b8; }
+    #show-login-modal, #show-register-modal { background-color: #007bff; }
+    #logout-btn { background-color: #dc3545; }
+    #play-as-guest-btn { font-size: 20px; background-color: #28a745; }
+    #user-info { margin-bottom: 15px; }
+    
+    .modal { position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; }
+    .modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; border-radius: 10px; }
+    .modal-content input { width: calc(100% - 22px); padding: 10px; margin: 5px 0 15px 0; }
+    
     #game-layout { display: flex; align-items: flex-start; gap: 20px; }
+    .side-panel { width: 220px; height: 600px; display: flex; flex-direction: column; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 5px; padding: 10px; box-sizing: border-box; }
     #game-container { display: flex; flex-direction: column; align-items: center; }
     #game-code-display { font-size: 16px; font-weight: bold; background: #fff; padding: 5px 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #ddd; }
     canvas { background: #f9d58a; box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); cursor: pointer; }
     #turn-indicator { font-family: sans-serif; color: #333; height: 50px; margin-bottom: 5px; margin-top: 10px; text-align: center; }
-    
-    .side-panel { width: 220px; height: 600px; display: flex; flex-direction: column; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 5px; padding: 10px; box-sizing: border-box; }
     .timer-box { margin-bottom: 15px; }
     .timer-box h3 { text-align: center; margin: 5px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 16px; }
     .current-time { font-size: 24px; font-weight: bold; text-align: center; color: #007bff; margin-bottom: 10px; }
@@ -29,7 +33,6 @@
     .time-list li.fastest-move { color: green; font-weight: bold; }
     .time-list li.slowest-move { color: red; font-weight: bold; }
     .total-time { text-align: center; font-weight: bold; margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px; }
-
     #chat-container { width: 250px; }
     #chat-container h3 { text-align: center; margin: 10px 0; }
     #messages { flex-grow: 1; padding: 10px; overflow-y: auto; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
@@ -37,9 +40,9 @@
     #messages span { font-weight: bold; }
     #chat-form { display: flex; padding: 5px; }
     #chat-input { flex-grow: 1; border: 1px solid #ccc; border-radius: 3px; padding: 5px; }
-
     #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     #winner-modal { background: white; padding: 25px 40px; border-radius: 10px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    #winner-modal .button-row { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
     #winner-modal button { margin: 5px; }
     #final-stats { margin-top: 15px; text-align: left; font-size: 14px; }
   </style>
@@ -48,8 +51,21 @@
 
   <div id="lobby" class="lobby-container">
     <h1>Рендзю</h1>
-    <button id="create-game-btn">Створити гру</button>
-    <button id="join-game-btn">Приєднатися до гри</button>
+    <div id="user-info" class="hidden">
+      <p>Вітаємо, <strong id="user-name-display"></strong>!</p>
+    </div>
+    <div class="button-group" id="auth-container">
+      <button id="show-login-modal">Вхід</button>
+      <button id="show-register-modal">Реєстрація</button>
+    </div>
+    <div class="button-group hidden" id="game-actions">
+      <button id="create-game-btn">Створити гру</button>
+      <button id="join-game-btn">Приєднатися до гри</button>
+    </div>
+    <hr style="width:100%; margin: 20px 0;">
+    <div class="button-group">
+      <button id="play-as-guest-btn">Грати як гість</button>
+    </div>
   </div>
   
   <div id="join-screen" class="lobby-container hidden">
@@ -60,7 +76,7 @@
     </form>
     <button id="back-to-lobby">Назад</button>
   </div>
-
+  
   <div id="game-layout" class="hidden">
     <div id="stats-container" class="side-panel">
       <div id="black-timer-box" class="timer-box">
@@ -76,20 +92,18 @@
         <div id="white-total-time" class="total-time">Всього: 0.0с</div>
       </div>
     </div>
-
     <div id="game-container">
       <canvas id="board" width="600" height="600"></canvas>
       <h2 id="turn-indicator">Завантаження...</h2>
       <button id="reset">Завершити гру</button>
     </div>
-
     <div id="chat-container" class="side-panel">
-        <h3>Ігровий чат</h3>
-        <div id="messages"></div>
-        <form id="chat-form">
-            <input id="chat-input" type="text" placeholder="Ваше повідомлення..." autocomplete="off">
-            <button type="submit">»</button>
-        </form>
+      <h3>Ігровий чат</h3>
+      <div id="messages"></div>
+      <form id="chat-form">
+        <input id="chat-input" type="text" placeholder="Ваше повідомлення..." autocomplete="off">
+        <button type="submit">»</button>
+      </form>
     </div>
   </div>
 
@@ -97,14 +111,42 @@
     <div id="winner-modal">
       <h2 id="winner-message"></h2>
       <div id="final-stats"></div>
-      <button id="rematch-btn">Грати ще раз</button>
-      <button id="back-to-lobby-from-game">Повернутись в лобі</button>
+      <div class="button-row">
+        <button id="rematch-btn">Грати ще раз</button>
+        <button id="back-to-lobby-from-game">В лобі</button>
+      </div>
+      <button id="close-winner-modal-btn" style="background-color: #6c757d; margin-top: 10px;">Подивитись дошку</button>
+    </div>
+  </div>
+
+  <div id="login-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Вхід</h2>
+      <form id="login-form">
+        <input type="email" id="login-email" placeholder="Email" required>
+        <input type="password" id="login-password" placeholder="Пароль" required>
+        <button type="submit">Увійти</button>
+        <button type="button" class="close-modal">Закрити</button>
+      </form>
+    </div>
+  </div>
+  <div id="register-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Реєстрація</h2>
+      <form id="register-form">
+        <input type="text" id="register-name" placeholder="Ваше ім'я" required>
+        <input type="email" id="register-email" placeholder="Email" required>
+        <input type="password" id="register-password" placeholder="Пароль" required>
+        <button type="submit">Зареєструватися</button>
+        <button type="button" class="close-modal">Закрити</button>
+      </form>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, push, remove, onDisconnect, get, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, onValue, set, get, remove, serverTimestamp, onDisconnect, push } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBXnor_Y2N9HFNqHI7hs8HBF2MRxJFTIq4",
@@ -119,234 +161,241 @@
     
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    const lobbyDiv = document.getElementById('lobby'), authContainer = document.getElementById('auth-container'), userInfoDiv = document.getElementById('user-info'), userNameDisplay = document.getElementById('user-name-display'), gameActionsDiv = document.getElementById('game-actions'), playAsGuestBtn = document.getElementById('play-as-guest-btn'), loginModal = document.getElementById('login-modal'), registerModal = document.getElementById('register-modal'), loginForm = document.getElementById('login-form'), registerForm = document.getElementById('register-form'), joinScreenDiv = document.getElementById('join-screen'), createGameBtn = document.getElementById('create-game-btn'), joinGameBtn = document.getElementById('join-game-btn'), joinForm = document.getElementById('join-form'), gameCodeInput = document.getElementById('game-code-input'), backToLobbyBtn = document.getElementById('back-to-lobby'), gameLayoutDiv = document.getElementById('game-layout');
     
-    const lobbyDiv = document.getElementById('lobby');
-    const joinScreenDiv = document.getElementById('join-screen');
-    const createGameBtn = document.getElementById('create-game-btn');
-    const joinGameBtn = document.getElementById('join-game-btn');
-    const joinForm = document.getElementById('join-form');
-    const gameCodeInput = document.getElementById('game-code-input');
-    const backToLobbyBtn = document.getElementById('back-to-lobby');
-    const gameLayoutDiv = document.getElementById('game-layout');
+    let localPlayerName = localStorage.getItem('playerName') || 'Гість';
     
+    onAuthStateChanged(auth, user => {
+      const guestButtonGroup = playAsGuestBtn.parentElement;
+      if (user) {
+        const userRef = ref(db, `users/${user.uid}`);
+        get(userRef).then((snapshot) => {
+            const userData = snapshot.val() || {};
+            localPlayerName = userData.name;
+            localStorage.setItem('playerName', localPlayerName);
+            userNameDisplay.textContent = `${localPlayerName} (Рейтинг: ${userData.rating || 1200})`;
+        });
+        userInfoDiv.classList.remove('hidden'); gameActionsDiv.classList.remove('hidden'); guestButtonGroup.classList.add('hidden');
+        authContainer.innerHTML = `<button id="logout-btn">Вийти</button>`;
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+      } else {
+        localPlayerName = 'Гість';
+        userInfoDiv.classList.add('hidden'); gameActionsDiv.classList.add('hidden'); guestButtonGroup.classList.remove('hidden');
+        authContainer.innerHTML = `<button id="show-login-modal">Вхід</button> <button id="show-register-modal">Реєстрація</button>`;
+        document.getElementById('show-login-modal').addEventListener('click', () => loginModal.classList.remove('hidden'));
+        document.getElementById('show-register-modal').addEventListener('click', () => registerModal.classList.remove('hidden'));
+      }
+    });
+
+    document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', () => { loginModal.classList.add('hidden'); registerModal.classList.add('hidden'); }));
+    
+    loginForm.addEventListener('submit', async (e) => { e.preventDefault(); try { await signInWithEmailAndPassword(auth, loginForm['login-email'].value, loginForm['login-password'].value); loginModal.classList.add('hidden'); } catch (error) { alert(`Помилка входу: ${error.message}`); } });
+    registerForm.addEventListener('submit', async (e) => { e.preventDefault(); try { const userCredential = await createUserWithEmailAndPassword(auth, registerForm['register-email'].value, registerForm['register-password'].value); await set(ref(db, `users/${userCredential.user.uid}`), { name: registerForm['register-name'].value, rating: 1200 }); registerModal.classList.add('hidden'); } catch (error) { alert(`Помилка реєстрації: ${error.message}`); } });
+    
+    playAsGuestBtn.addEventListener('click', () => {
+        let guestName = prompt("Будь ласка, введіть ваше ім'я для гри:", localStorage.getItem('playerName') || 'Гість') || 'Гість';
+        localPlayerName = guestName;
+        localStorage.setItem('playerName', localPlayerName);
+        gameActionsDiv.classList.remove('hidden'); authContainer.classList.add('hidden'); playAsGuestBtn.parentElement.classList.add('hidden');
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const gameId = urlParams.get('game');
+    if (gameId) { lobbyDiv.classList.add('hidden'); joinScreenDiv.classList.add('hidden'); gameLayoutDiv.classList.remove('hidden'); initGame(gameId); }
 
-    let myName = localStorage.getItem('playerName');
-    if (!myName) {
-        myName = prompt("Будь ласка, введіть ваше ім'я:") || 'Анонім';
-        localStorage.setItem('playerName', myName);
-    }
-    
-    if (gameId) {
-        lobbyDiv.classList.add('hidden');
-        joinScreenDiv.classList.add('hidden');
-        gameLayoutDiv.classList.remove('hidden');
-        initGame(gameId);
-    }
-
-    createGameBtn.addEventListener('click', () => {
+    createGameBtn.addEventListener('click', async () => {
         const newGameId = Math.floor(100 + Math.random() * 900).toString();
+        const initialGameData = { current: 'black', score: { black: 0, white: 0 } };
+        await set(ref(db, `games/${newGameId}`), initialGameData);
         window.location.href = `?game=${newGameId}`;
     });
     
-    joinGameBtn.addEventListener('click', () => {
-        lobbyDiv.classList.add('hidden');
-        joinScreenDiv.classList.remove('hidden');
-    });
+    joinGameBtn.addEventListener('click', () => { lobbyDiv.classList.add('hidden'); joinScreenDiv.classList.remove('hidden'); });
+    backToLobbyBtn.addEventListener('click', () => { joinScreenDiv.classList.add('hidden'); lobbyDiv.classList.remove('hidden'); });
     
-    backToLobbyBtn.addEventListener('click', () => {
-        joinScreenDiv.classList.add('hidden');
-        lobbyDiv.classList.remove('hidden');
-    });
-
-    joinForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const code = gameCodeInput.value;
-        if (code && code.length === 3) {
-            const gameRef = ref(db, `games/${code}`);
-            const snapshot = await get(gameRef);
-            if (snapshot.exists()) {
-                window.location.href = `?game=${code}`;
-            } else {
-                alert("Гра з таким кодом не знайдена. Перевірте код.");
-            }
-        } else {
-            alert("Будь ласка, введіть код з 3 цифр.");
-        }
-    });
+    joinForm.addEventListener('submit', async (e) => { e.preventDefault(); const code = gameCodeInput.value; if (code && code.length === 3) { const gameRef = ref(db, `games/${code}`); const snapshot = await get(gameRef); if (snapshot.exists() && snapshot.val().current) { window.location.href = `?game=${code}`; } else { alert("Гра з таким кодом не знайдена."); } } else { alert("Будь ласка, введіть код з 3 цифр."); } });
 
     function initGame(currentGameId) {
-        const canvas = document.getElementById("board");
-        const ctx = canvas.getContext("2d");
-        const resetButton = document.getElementById("reset");
-        const turnIndicator = document.getElementById("turn-indicator");
-        const overlay = document.getElementById("overlay");
-        const winnerMessage = document.getElementById("winner-message");
-        const finalStatsDiv = document.getElementById('final-stats');
-        const rematchBtn = document.getElementById('rematch-btn');
-        const backToLobbyFromGameBtn = document.getElementById('back-to-lobby-from-game');
-        const messagesDiv = document.getElementById('messages');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-        const gameContainer = document.getElementById('game-container');
-        const blackTimerBox = { name: document.getElementById('black-player-name'), currentTime: document.getElementById('black-current-time'), timeList: document.getElementById('black-time-list'), totalTime: document.getElementById('black-total-time') };
-        const whiteTimerBox = { name: document.getElementById('white-player-name'), currentTime: document.getElementById('white-current-time'), timeList: document.getElementById('white-time-list'), totalTime: document.getElementById('white-total-time') };
+      const canvas = document.getElementById("board"), ctx = canvas.getContext("2d"), resetButton = document.getElementById("reset"), turnIndicator = document.getElementById("turn-indicator"), overlay = document.getElementById("overlay"), winnerMessage = document.getElementById("winner-message"), finalStatsDiv = document.getElementById('final-stats'), rematchBtn = document.getElementById('rematch-btn'), backToLobbyFromGameBtn = document.getElementById('back-to-lobby-from-game'), closeWinnerModalBtn = document.getElementById('close-winner-modal-btn'), messagesDiv = document.getElementById('messages'), chatForm = document.getElementById('chat-form'), chatInput = document.getElementById('chat-input'), gameContainer = document.getElementById('game-container'), blackTimerBox = { name: document.getElementById('black-player-name'), currentTime: document.getElementById('black-current-time'), timeList: document.getElementById('black-time-list'), totalTime: document.getElementById('black-total-time') }, whiteTimerBox = { name: document.getElementById('white-player-name'), currentTime: document.getElementById('white-current-time'), timeList: document.getElementById('white-time-list'), totalTime: document.getElementById('white-total-time') };
+      let myPlayerId = sessionStorage.getItem('playerId');
+      if (!myPlayerId) { myPlayerId = Date.now().toString() + Math.random().toString(); sessionStorage.setItem('playerId', myPlayerId); }
+      let myRole = null, players = {}, currentTimerInterval = null, current = "black", lastMove = null;
+      const size = 15, cell = canvas.width / size;
+      let board = Array.from({ length: size }, () => Array(size).fill(null));
 
-        let myPlayerId = sessionStorage.getItem('playerId');
-        if (!myPlayerId) { myPlayerId = Date.now().toString() + Math.random().toString(); sessionStorage.setItem('playerId', myPlayerId); }
-        let myRole = null;
-        let players = {};
-        let currentTimerInterval = null;
-
-        const size = 15;
-        const cell = canvas.width / size;
-        let board = Array.from({ length: size }, () => Array(size).fill(null));
-        let current = "black";
-        let lastMove = null;
-
-        const gameRef = ref(db, `games/${currentGameId}`);
-        const movesRef = ref(db, `games/${currentGameId}/moves`);
-        const currentRef = ref(db, `games/${currentGameId}/current`);
-        const playersRef = ref(db, `games/${currentGameId}/players`);
-        const lastMoveRef = ref(db, `games/${currentGameId}/lastMove`);
-        const chatRef = ref(db, `games/${currentGameId}/chat`);
-        const winnerRef = ref(db, `games/${currentGameId}/winner`);
-        const scoreRef = ref(db, `games/${currentGameId}/score`);
-        const turnStartTimeRef = ref(db, `games/${currentGameId}/turnStartTime`);
-        const moveTimesRef = ref(db, `games/${currentGameId}/moveTimes`);
-        
-        onValue(playersRef, (snapshot) => { players = snapshot.val() || {}; if (!myRole) assignRole(); updateTurnIndicator(); updateScoreDisplay(); });
-        
-        function assignRole() {
-            const blackPlayer = players.black, whitePlayer = players.white;
-            if (blackPlayer?.id === myPlayerId) myRole = 'black';
-            else if (whitePlayer?.id === myPlayerId) myRole = 'white';
-            else if (!blackPlayer) { myRole = 'black'; set(ref(db, `games/${currentGameId}/players/black`), { id: myPlayerId, name: myName }); onDisconnect(ref(db, `games/${currentGameId}/players/black`)).remove(); }
-            else if (!whitePlayer) { myRole = 'white'; set(ref(db, `games/${currentGameId}/players/white`), { id: myPlayerId, name: myName }); onDisconnect(ref(db, `games/${currentGameId}/players/white`)).remove(); }
-            else { myRole = 'spectator'; }
+      const gameRef = ref(db, `games/${currentGameId}`), movesRef = ref(db, `games/${currentGameId}/moves`), currentRef = ref(db, `games/${currentGameId}/current`), playersRef = ref(db, `games/${currentGameId}/players`), lastMoveRef = ref(db, `games/${currentGameId}/lastMove`), chatRef = ref(db, `games/${currentGameId}/chat`), winnerRef = ref(db, `games/${currentGameId}/winner`), scoreRef = ref(db, `games/${currentGameId}/score`), turnStartTimeRef = ref(db, `games/${currentGameId}/turnStartTime`), moveTimesRef = ref(db, `games/${currentGameId}/moveTimes`);
+      
+      onValue(playersRef, (snapshot) => { 
+        players = snapshot.val() || {}; 
+        if (!myRole) assignRole(); 
+        updateScoreDisplay(); 
+        updateTurnIndicator();
+        const blackPlayer = players.black, whitePlayer = players.white;
+        if (blackPlayer && whitePlayer) {
+            get(turnStartTimeRef).then(timeSnapshot => {
+                if (!timeSnapshot.exists()) { set(turnStartTimeRef, serverTimestamp()); }
+            });
         }
+      });
+      
+      function assignRole() {
+        const user = auth.currentUser;
+        const playerUID = user ? user.uid : myPlayerId;
+        const blackPlayer = players.black, whitePlayer = players.white;
+        const nameToSet = user ? localPlayerName : (localStorage.getItem('playerName') || 'Гість');
+        if (blackPlayer?.id === playerUID) myRole = 'black';
+        else if (whitePlayer?.id === playerUID) myRole = 'white';
+        else if (!blackPlayer) { myRole = 'black'; set(ref(db, `games/${currentGameId}/players/black`), { id: playerUID, name: nameToSet, isGuest: !user }); onDisconnect(ref(db, `games/${currentGameId}/players/black`)).remove(); }
+        else if (!whitePlayer) { myRole = 'white'; set(ref(db, `games/${currentGameId}/players/white`), { id: playerUID, name: nameToSet, isGuest: !user }); onDisconnect(ref(db, `games/${currentGameId}/players/white`)).remove(); }
+        else { myRole = 'spectator'; }
+      }
 
-        onValue(turnStartTimeRef, (snapshot) => {
-            clearInterval(currentTimerInterval);
-            blackTimerBox.currentTime.textContent = '0.0с';
-            whiteTimerBox.currentTime.textContent = '0.0с';
-            const startTime = snapshot.val();
-            if (startTime) {
-                currentTimerInterval = setInterval(() => {
-                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                    if (current === 'black') blackTimerBox.currentTime.textContent = `${elapsed}с`;
-                    else whiteTimerBox.currentTime.textContent = `${elapsed}с`;
-                }, 100);
+      onValue(turnStartTimeRef, (snapshot) => {
+        clearInterval(currentTimerInterval);
+        blackTimerBox.currentTime.textContent = '0.0с'; whiteTimerBox.currentTime.textContent = '0.0с';
+        const startTime = snapshot.val();
+        get(winnerRef).then(winnerSnapshot => {
+            if (startTime && !winnerSnapshot.exists() && players.black && players.white) {
+                currentTimerInterval = setInterval(() => { const elapsed = ((Date.now() - startTime) / 1000).toFixed(1); if (current === 'black') blackTimerBox.currentTime.textContent = `${elapsed}с`; else whiteTimerBox.currentTime.textContent = `${elapsed}с`; }, 100);
             }
         });
+      });
 
-        onValue(moveTimesRef, (snapshot) => {
-            const allMoveTimes = snapshot.val() || { black: [], white: [] };
-            updateStatsPanel('black', allMoveTimes.black || []);
-            updateStatsPanel('white', allMoveTimes.white || []);
+      onValue(moveTimesRef, (snapshot) => { const allMoveTimes = snapshot.val() || { black: [], white: [] }; updateStatsPanel('black', allMoveTimes.black || []); updateStatsPanel('white', allMoveTimes.white || []); });
+      
+      function updateScoreDisplay() {
+        get(scoreRef).then((snapshot) => {
+            const score = snapshot.val() || { black: 0, white: 0 };
+            const blackName = players.black?.name || "Чорні", whiteName = players.white?.name || "Білі";
+            blackTimerBox.name.textContent = `${blackName} (${score.black})`; whiteTimerBox.name.textContent = `${whiteName} (${score.white})`;
         });
+      }
 
-        function updateScoreDisplay() {
-            onValue(scoreRef, (snapshot) => {
-                const score = snapshot.val() || { black: 0, white: 0 };
-                const blackName = players.black?.name || "Чорні";
-                const whiteName = players.white?.name || "Білі";
-                blackTimerBox.name.textContent = `${blackName} (${score.black})`;
-                whiteTimerBox.name.textContent = `${whiteName} (${score.white})`;
-            }, { onlyOnce: true });
-        }
+      function updateStatsPanel(player, times) {
+        const box = player === 'black' ? blackTimerBox : whiteTimerBox;
+        box.timeList.innerHTML = '';
+        if (times.length === 0) { box.totalTime.textContent = 'Всього: 0.0с'; return; }
+        const fastest = Math.min(...times), slowest = Math.max(...times);
+        times.forEach(time => { const li = document.createElement('li'); li.textContent = `${time.toFixed(1)}с`; if (time === fastest) li.classList.add('fastest-move'); if (time === slowest) li.classList.add('slowest-move'); box.timeList.appendChild(li); });
+        const total = times.reduce((sum, t) => sum + t, 0); box.totalTime.textContent = `Всього: ${total.toFixed(1)}с`;
+      }
 
-        function updateStatsPanel(player, times) {
-            const box = player === 'black' ? blackTimerBox : whiteTimerBox;
-            box.timeList.innerHTML = '';
-            if (times.length === 0) { box.totalTime.textContent = 'Всього: 0.0с'; return; }
-            const fastest = Math.min(...times), slowest = Math.max(...times);
-            times.forEach(time => { const li = document.createElement('li'); li.textContent = `${time.toFixed(1)}с`; if (time === fastest) li.classList.add('fastest-move'); if (time === slowest) li.classList.add('slowest-move'); box.timeList.appendChild(li); });
-            const total = times.reduce((sum, t) => sum + t, 0);
-            box.totalTime.textContent = `Всього: ${total.toFixed(1)}с`;
-        }
+      function drawBoard() {
+        ctx.clearRect(0,0,canvas.width,canvas.height); ctx.strokeStyle="#000"; ctx.lineWidth=1;
+        for(let i=0;i<size;i++){ ctx.beginPath(); ctx.moveTo(cell/2,cell/2+i*cell); ctx.lineTo(canvas.width-cell/2,cell/2+i*cell); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cell/2+i*cell,cell/2); ctx.lineTo(cell/2+i*cell,canvas.height-cell/2); ctx.stroke(); }
+        for(let y=0;y<size;y++){ for(let x=0;x<size;x++){ if(board[y][x]){ const stoneX = cell/2+x*cell, stoneY = cell/2+y*cell; ctx.beginPath(); ctx.arc(stoneX,stoneY,cell*.4,0,Math.PI*2); ctx.fillStyle=board[y][x]; ctx.shadowColor="rgba(0,0,0,0.3)"; ctx.shadowBlur=5; ctx.fill(); ctx.shadowBlur=0; if(lastMove && lastMove.x === x && lastMove.y === y){ ctx.beginPath(); ctx.arc(stoneX,stoneY,cell*.15,0,Math.PI*2); ctx.fillStyle=board[y][x]==='black'?'white':'black'; ctx.fill(); } } } }
+      }
 
-        function drawBoard() {
-            ctx.clearRect(0,0,canvas.width,canvas.height); ctx.strokeStyle="#000"; ctx.lineWidth=1;
-            for(let i=0;i<size;i++){ ctx.beginPath(); ctx.moveTo(cell/2,cell/2+i*cell); ctx.lineTo(canvas.width-cell/2,cell/2+i*cell); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cell/2+i*cell,cell/2); ctx.lineTo(cell/2+i*cell,canvas.height-cell/2); ctx.stroke(); }
-            for(let y=0;y<size;y++){ for(let x=0;x<size;x++){ if(board[y][x]){ const stoneX = cell/2+x*cell, stoneY = cell/2+y*cell; ctx.beginPath(); ctx.arc(stoneX,stoneY,cell*.4,0,Math.PI*2); ctx.fillStyle=board[y][x]; ctx.shadowColor="rgba(0,0,0,0.3)"; ctx.shadowBlur=5; ctx.fill(); ctx.shadowBlur=0; if(lastMove && lastMove.x === x && lastMove.y === y){ ctx.beginPath(); ctx.arc(stoneX,stoneY,cell*.15,0,Math.PI*2); ctx.fillStyle=board[y][x]==='black'?'white':'black'; ctx.fill(); } } } }
-        }
+      function checkWinner(x,y,c){ const d=[[[1,0],[-1,0]],[[0,1],[0,-1]],[[1,1],[-1,-1]],[[1,-1],[-1,1]]]; for(let dir of d){ let count=1; for(let[dx,dy] of dir){ let nx=x,ny=y; while(true){ nx+=dx;ny+=dy; if(nx<0||ny<0||nx>=size||ny>=size||board[ny][nx]!==c)break; count++; } } if(count>=5)return true; } return false; }
+      
+      async function onGameEnd(winnerColor) {
+        const game = (await get(gameRef)).val();
+        if (!game.players.black || !game.players.white || game.players.black.isGuest || game.players.white.isGuest) { console.log("Один з гравців - гість. Рейтинг не розраховується."); return; }
+        const pBlackId = game.players.black.id, pWhiteId = game.players.white.id;
+        const pBlackRef = ref(db, `users/${pBlackId}`), pWhiteRef = ref(db, `users/${pWhiteId}`);
+        const pBlack = (await get(pBlackRef)).val(), pWhite = (await get(pWhiteRef)).val();
+        const resBlack = winnerColor === 'black' ? 1 : 0;
+        const [newRatingBlack, newRatingWhite] = calculateNewRatings(pBlack.rating, pWhite.rating, resBlack);
+        await set(ref(db, `users/${pBlackId}/rating`), newRatingBlack);
+        await set(ref(db, `users/${pWhiteId}/rating`), newRatingWhite);
+      }
 
-        function checkWinner(x,y,c){ const d=[[[1,0],[-1,0]],[[0,1],[0,-1]],[[1,1],[-1,-1]],[[1,-1],[-1,1]]]; for(let dir of d){ let count=1; for(let[dx,dy] of dir){ let nx=x,ny=y; while(true){ nx+=dx;ny+=dy; if(nx<0||ny<0||nx>=size||ny>=size||board[ny][nx]!==c)break; count++; } } if(count>=5)return true; } return false; }
+      function calculateNewRatings(ratingA, ratingB, resultA) {
+          const K = 32; const expectedA = 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+          const newRatingA = Math.round(ratingA + K * (resultA - expectedA));
+          const newRatingB = ratingB - (newRatingA - ratingA);
+          return [newRatingA, newRatingB];
+      }
+      
+      async function showWinner(winnerColor) {
+        clearInterval(currentTimerInterval);
+        const winnerName = (players[winnerColor]?.name || (winnerColor === 'black' ? 'Чорні' : 'Білі')).toUpperCase();
+        winnerMessage.textContent = `ПЕРЕМОЖЕЦЬ: ${winnerName}`;
+        const score = (await get(scoreRef)).val() || { black: 0, white: 0 };
+        const moveTimes = (await get(moveTimesRef)).val() || { black: [], white: [] };
+        const blackTotal = (moveTimes.black || []).reduce((s, t) => s + t, 0).toFixed(1);
+        const whiteTotal = (moveTimes.white || []).reduce((s, t) => s + t, 0).toFixed(1);
+        finalStatsDiv.innerHTML = `<p><strong>Фінальний рахунок: ${score.black} : ${score.white}</strong></p><p>${players.black?.name || "Чорні"}: ${blackTotal}с</p><p>${players.white?.name || "Білі"}: ${whiteTotal}с</p>`;
+        overlay.classList.remove("hidden");
+      }
+
+      onValue(winnerRef, (snapshot) => { const winner = snapshot.val(); if (winner) { showWinner(winner); } else { overlay.classList.add("hidden"); } });
+      onValue(movesRef,s=>{ const m=s.val()||{}; board=Array.from({length:size},()=>Array(size).fill(null)); for(let k in m){ const{x,y,color}=m[k]; board[y][x]=color; } drawBoard(); });
+      onValue(lastMoveRef, s => { lastMove = s.val(); drawBoard(); });
+      onValue(currentRef,s=>{ current=s.val()||"black"; updateTurnIndicator(); });
+
+      function updateTurnIndicator() {
+        const turnPlayer = current === "black" ? players.black : players.white;
+        const turnName = turnPlayer?.name || (current === "black" ? "Чорних" : "Білих");
+        let statusText = `Хід: ${turnName}`;
+        if (myRole && myRole !== 'spectator') { statusText += `<br><small>(Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})</small>`; }
+        else if (myRole === 'spectator') { statusText += "<br><small>(Ви глядач)</small>"; }
+        turnIndicator.innerHTML = statusText;
+      }
+
+      canvas.addEventListener("click", async (e) => {
+        if (myRole !== current || !overlay.classList.contains('hidden')) return;
+        const r=canvas.getBoundingClientRect(); const x=Math.round((e.clientX-r.left-cell/2)/cell); const y=Math.round((e.clientY-r.top-cell/2)/cell);
+        if (x<0||y<0||x>=size||y>=size||board[y][x]) return;
         
-        async function showWinner(winnerColor) {
-            clearInterval(currentTimerInterval);
-            const winnerName = players[winnerColor]?.name || (winnerColor === 'black' ? 'Чорні' : 'Білі');
-            const score = (await get(scoreRef)).val() || { black: 0, white: 0 };
-            const moveTimes = (await get(moveTimesRef)).val() || { black: [], white: [] };
-            const blackTotal = (moveTimes.black || []).reduce((s, t) => s + t, 0).toFixed(1);
-            const whiteTotal = (moveTimes.white || []).reduce((s, t) => s + t, 0).toFixed(1);
-            winnerMessage.textContent = `${winnerName} перемогли!`;
-            finalStatsDiv.innerHTML = `<p><strong>Фінальний рахунок: ${score.black} : ${score.white}</strong></p><p>${players.black?.name || "Чорні"}: ${blackTotal}с</p><p>${players.white?.name || "Білі"}: ${whiteTotal}с</p>`;
-            overlay.classList.remove("hidden");
-        }
-
-        onValue(winnerRef, (snapshot) => { const winner = snapshot.val(); if (winner) showWinner(winner); });
-        onValue(movesRef,s=>{ const m=s.val()||{}; board=Array.from({length:size},()=>Array(size).fill(null)); for(let k in m){ const{x,y,color}=m[k]; board[y][x]=color; } drawBoard(); });
-        onValue(lastMoveRef, s => { lastMove = s.val(); drawBoard(); });
-        onValue(currentRef,s=>{ current=s.val()||"black"; updateTurnIndicator(); });
-
-        function updateTurnIndicator() {
-            const turnPlayer = current === "black" ? players.black : players.white;
-            const turnName = turnPlayer?.name || (current === "black" ? "Чорних" : "Білих");
-            let statusText = `Хід: ${turnName}`;
-            if (myRole && myRole !== 'spectator') { statusText += `<br><small>(Ви граєте за ${myRole === 'black' ? 'чорних' : 'білих'})</small>`; }
-            else if (myRole === 'spectator') { statusText += "<br><small>(Ви глядач)</small>"; }
-            turnIndicator.innerHTML = statusText;
-        }
-
-        canvas.addEventListener("click", async (e) => {
-            if (myRole !== current || !overlay.classList.contains('hidden')) return;
-            const startTime = (await get(turnStartTimeRef)).val();
-            const moveDuration = startTime ? (Date.now() - startTime) / 1000 : 0;
+        const startTime = (await get(turnStartTimeRef)).val();
+        if(startTime) {
+            const moveDuration = (Date.now() - startTime) / 1000;
             const currentMoveTimes = (await get(moveTimesRef)).val() || { black: [], white: [] };
             if (!currentMoveTimes[current]) currentMoveTimes[current] = [];
             currentMoveTimes[current].push(moveDuration);
-            set(moveTimesRef, currentMoveTimes);
+            await set(moveTimesRef, currentMoveTimes);
+        }
 
-            const r=canvas.getBoundingClientRect(); const x=Math.round((e.clientX-r.left-cell/2)/cell); const y=Math.round((e.clientY-r.top-cell/2)/cell);
-            if (x<0||y<0||x>=size||y>=size||board[y][x]) return;
-            const move={x,y,color:current}; push(movesRef,move); set(lastMoveRef, {x, y});
+        const move={x,y,color:current}; 
+        await push(movesRef,move); 
+        await set(lastMoveRef, {x, y});
 
-            if (checkWinner(x, y, current)) {
-                const currentScore = (await get(scoreRef)).val() || { black: 0, white: 0 };
-                currentScore[current]++;
-                set(scoreRef, currentScore);
-                set(winnerRef, current);
-                return;
-            }
-            set(currentRef, current === "black" ? "white" : "black");
-            set(turnStartTimeRef, serverTimestamp());
-        });
-        
-        chatForm.addEventListener('submit', e => { e.preventDefault(); const messageText = chatInput.value.trim(); if (messageText) { push(chatRef, { name: myName, text: messageText }); chatInput.value = ''; } });
-        onValue(chatRef, snapshot => { messagesDiv.innerHTML = ''; snapshot.forEach(childSnapshot => { const message = childSnapshot.val(); const p = document.createElement('p'); const nameSpan = document.createElement('span'); nameSpan.textContent = `${message.name}: `; p.appendChild(nameSpan); p.append(document.createTextNode(message.text)); messagesDiv.appendChild(p); }); messagesDiv.scrollTop = messagesDiv.scrollHeight; });
-
-        function exitToLobby() { remove(gameRef); window.location.href = window.location.pathname; }
-        function startRematch() {
-            remove(movesRef); set(currentRef, "black"); set(turnStartTimeRef, serverTimestamp());
-            remove(winnerRef); remove(lastMoveRef); remove(moveTimesRef);
-            overlay.classList.add("hidden");
+        if (checkWinner(x, y, current)) {
+          const currentScore = (await get(scoreRef)).val() || { black: 0, white: 0 };
+          currentScore[current]++;
+          await set(scoreRef, currentScore);
+          await onGameEnd(current);
+          await set(winnerRef, current);
+          return;
         }
         
-        resetButton.addEventListener("click", exitToLobby);
-        rematchBtn.addEventListener("click", startRematch);
-        backToLobbyFromGameBtn.addEventListener("click", exitToLobby);
-        
-        if (!document.getElementById('game-code-display')) {
-            const codeDisplay = document.createElement('p');
-            codeDisplay.id = 'game-code-display';
-            codeDisplay.textContent = `Код гри: ${currentGameId}`;
-            gameContainer.appendChild(codeDisplay);
-        }
-        
-        drawBoard();
+        await set(currentRef, current === "black" ? "white" : "black");
+        await set(turnStartTimeRef, serverTimestamp());
+      });
+      
+      chatForm.addEventListener('submit', e => { 
+        e.preventDefault(); 
+        const messageText = chatInput.value.trim(); 
+        if (messageText) {
+          const senderName = myRole === 'black' ? (players.black?.name || 'Гість') : (myRole === 'white' ? (players.white?.name || 'Гість') : localPlayerName);
+          push(chatRef, { name: senderName, text: messageText }); 
+          chatInput.value = ''; 
+        } 
+      });
+      onValue(chatRef, snapshot => { messagesDiv.innerHTML = ''; snapshot.forEach(childSnapshot => { const message = childSnapshot.val(); const p = document.createElement('p'); const nameSpan = document.createElement('span'); nameSpan.textContent = `${message.name}: `; p.appendChild(nameSpan); p.append(document.createTextNode(message.text)); messagesDiv.appendChild(p); }); messagesDiv.scrollTop = messagesDiv.scrollHeight; });
+
+      function exitToLobby() { remove(gameRef); window.location.href = window.location.pathname; }
+      function startRematch() {
+        remove(movesRef); set(currentRef, "black"); set(turnStartTimeRef, serverTimestamp());
+        remove(lastMoveRef); remove(moveTimesRef); remove(winnerRef);
+      }
+      
+      resetButton.addEventListener("click", exitToLobby);
+      rematchBtn.addEventListener("click", startRematch);
+      backToLobbyFromGameBtn.addEventListener("click", exitToLobby);
+      closeWinnerModalBtn.addEventListener('click', () => { overlay.classList.add('hidden'); });
+      
+      if (!document.getElementById('game-code-display')) {
+        const codeDisplay = document.createElement('p');
+        codeDisplay.id = 'game-code-display';
+        codeDisplay.textContent = `Код гри: ${currentGameId}`;
+        gameContainer.appendChild(codeDisplay);
+      }
+      
+      drawBoard();
     }
   </script>
 </body>
