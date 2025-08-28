@@ -2,9 +2,23 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Рендзю онлайн</title>
   <style>
-    body { display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh; background: #f0f0f0; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    body { 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      flex-direction: column; 
+      background: #f0f0f0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; 
+    }
     .hidden { display: none !important; }
     
     .lobby-container { text-align: center; background: white; padding: 30px 40px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); width: 320px; box-sizing: border-box; }
@@ -28,6 +42,7 @@
     #turn-indicator { font-family: sans-serif; color: #333; height: 50px; margin-bottom: 5px; margin-top: 10px; text-align: center; }
     .timer-box { margin-bottom: 15px; }
     .timer-box h3 { text-align: center; margin: 5px 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 16px; }
+    .timer-box .player-name { cursor: pointer; text-decoration: underline; }
     .current-time { font-size: 24px; font-weight: bold; text-align: center; color: #007bff; margin-bottom: 10px; }
     .time-list { list-style-type: decimal; padding-left: 25px; margin: 0; font-size: 14px; max-height: 150px; overflow-y: auto; }
     .time-list li.fastest-move { color: green; font-weight: bold; }
@@ -45,6 +60,27 @@
     #winner-modal .button-row { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
     #winner-modal button { margin: 5px; }
     #final-stats { margin-top: 15px; text-align: left; font-size: 14px; }
+
+    #chat-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 20px; z-index: 2000; transition: top 0.5s ease; text-align: center; max-width: 90%; }
+    #chat-toast.show { top: 10px; }
+    #chat-handle { display: none; }
+
+    @media (max-width: 1080px) {
+      body { overflow: auto; }
+      #game-layout { flex-direction: column; height: auto; min-height: 100%; width: 100%; padding: 70px 5px 5px 5px; box-sizing: border-box; gap: 15px; }
+      .side-panel { width: 100%; box-sizing: border-box; }
+      #stats-container { position: fixed; top: 0; left: 0; width: 100%; height: auto; flex-direction: row; justify-content: space-around; z-index: 100; border-radius: 0; padding: 5px; }
+      .timer-box { width: 48%; margin-bottom: 0; }
+      .time-list { display: none; }
+      .total-time { font-size: 12px; }
+      #game-container { width: 100%; order: -1; }
+      canvas { width: 95vw; height: 95vw; max-width: 600px; max-height: 600px; }
+      
+      #chat-container { position: fixed; bottom: -100%; left: 0; width: 100%; height: 70%; transition: bottom 0.4s ease; z-index: 1500; border-radius: 20px 20px 0 0; }
+      #chat-container.open { bottom: 0; }
+      #chat-handle { display: flex; width: 80px; height: 25px; background: #ccc; position: absolute; top: -25px; left: 50%; transform: translateX(-50%); border-radius: 10px 10px 0 0; cursor: pointer; justify-content: center; align-items: center; }
+      #chat-handle::before { content: ''; width: 40px; height: 5px; background: #fff; border-radius: 5px; }
+    }
   </style>
 </head>
 <body>
@@ -98,6 +134,7 @@
       <button id="reset">Завершити гру</button>
     </div>
     <div id="chat-container" class="side-panel">
+      <div id="chat-handle"></div>
       <h3>Ігровий чат</h3>
       <div id="messages"></div>
       <form id="chat-form">
@@ -143,9 +180,11 @@
     </div>
   </div>
 
+  <div id="chat-toast"></div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    import { getDatabase, ref, onValue, set, get, remove, serverTimestamp, onDisconnect, push } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+    import { getDatabase, ref, onValue, set, get, remove, serverTimestamp, onDisconnect, push, update } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -197,7 +236,8 @@
     playAsGuestBtn.addEventListener('click', () => {
         let guestName = prompt("Будь ласка, введіть ваше ім'я для гри:", localStorage.getItem('playerName') || 'Гість') || 'Гість';
         localPlayerName = guestName;
-        localStorage.setItem('playerName', localPlayerName);
+        sessionStorage.setItem('guestNameForGame', guestName);
+        localStorage.setItem('playerName', guestName);
         gameActionsDiv.classList.remove('hidden'); authContainer.classList.add('hidden'); playAsGuestBtn.parentElement.classList.add('hidden');
     });
 
@@ -218,14 +258,16 @@
     joinForm.addEventListener('submit', async (e) => { e.preventDefault(); const code = gameCodeInput.value; if (code && code.length === 3) { const gameRef = ref(db, `games/${code}`); const snapshot = await get(gameRef); if (snapshot.exists() && snapshot.val().current) { window.location.href = `?game=${code}`; } else { alert("Гра з таким кодом не знайдена."); } } else { alert("Будь ласка, введіть код з 3 цифр."); } });
 
     function initGame(currentGameId) {
-      const canvas = document.getElementById("board"), ctx = canvas.getContext("2d"), resetButton = document.getElementById("reset"), turnIndicator = document.getElementById("turn-indicator"), overlay = document.getElementById("overlay"), winnerMessage = document.getElementById("winner-message"), finalStatsDiv = document.getElementById('final-stats'), rematchBtn = document.getElementById('rematch-btn'), backToLobbyFromGameBtn = document.getElementById('back-to-lobby-from-game'), closeWinnerModalBtn = document.getElementById('close-winner-modal-btn'), messagesDiv = document.getElementById('messages'), chatForm = document.getElementById('chat-form'), chatInput = document.getElementById('chat-input'), gameContainer = document.getElementById('game-container'), blackTimerBox = { name: document.getElementById('black-player-name'), currentTime: document.getElementById('black-current-time'), timeList: document.getElementById('black-time-list'), totalTime: document.getElementById('black-total-time') }, whiteTimerBox = { name: document.getElementById('white-player-name'), currentTime: document.getElementById('white-current-time'), timeList: document.getElementById('white-time-list'), totalTime: document.getElementById('white-total-time') };
+      const canvas = document.getElementById("board"), ctx = canvas.getContext("2d"), resetButton = document.getElementById("reset"), turnIndicator = document.getElementById("turn-indicator"), overlay = document.getElementById("overlay"), winnerMessage = document.getElementById("winner-message"), finalStatsDiv = document.getElementById('final-stats'), rematchBtn = document.getElementById('rematch-btn'), backToLobbyFromGameBtn = document.getElementById('back-to-lobby-from-game'), closeWinnerModalBtn = document.getElementById('close-winner-modal-btn'), messagesDiv = document.getElementById('messages'), chatForm = document.getElementById('chat-form'), chatInput = document.getElementById('chat-input'), gameContainer = document.getElementById('game-container'), blackTimerBox = { name: document.getElementById('black-player-name'), currentTime: document.getElementById('black-current-time'), timeList: document.getElementById('black-time-list'), totalTime: document.getElementById('black-total-time') }, whiteTimerBox = { name: document.getElementById('white-player-name'), currentTime: document.getElementById('white-current-time'), timeList: document.getElementById('white-time-list'), totalTime: document.getElementById('white-total-time') }, chatContainer = document.getElementById('chat-container'), chatHandle = document.getElementById('chat-handle'), chatToast = document.getElementById('chat-toast');
+      
       let myPlayerId = sessionStorage.getItem('playerId');
       if (!myPlayerId) { myPlayerId = Date.now().toString() + Math.random().toString(); sessionStorage.setItem('playerId', myPlayerId); }
-      let myRole = null, players = {}, currentTimerInterval = null, current = "black", lastMove = null;
+      
+      let myRole = null, players = {}, currentTimerInterval = null, current = "black", lastMove = null, isMoveProcessing = false, toastTimeout;
       const size = 15, cell = canvas.width / size;
       let board = Array.from({ length: size }, () => Array(size).fill(null));
 
-      const gameRef = ref(db, `games/${currentGameId}`), movesRef = ref(db, `games/${currentGameId}/moves`), currentRef = ref(db, `games/${currentGameId}/current`), playersRef = ref(db, `games/${currentGameId}/players`), lastMoveRef = ref(db, `games/${currentGameId}/lastMove`), chatRef = ref(db, `games/${currentGameId}/chat`), winnerRef = ref(db, `games/${currentGameId}/winner`), scoreRef = ref(db, `games/${currentGameId}/score`), turnStartTimeRef = ref(db, `games/${currentGameId}/turnStartTime`), moveTimesRef = ref(db, `games/${currentGameId}/moveTimes`);
+      const gameRef = ref(db, `games/${currentGameId}`), movesRef = ref(db, `games/${currentGameId}/moves`), currentRef = ref(db, `games/${currentGameId}/current`), playersRef = ref(db, `games/${currentGameId}/players`), lastMoveRef = ref(db, `games/${currentGameId}/lastMove`), chatRef = ref(db, `games/${currentGameId}/chat`), winnerRef = ref(db, `games/${currentGameId}/winner`), scoreRef = ref(db, `games/${currentGameId}/score`), turnStartTimeRef = ref(db, `games/${currentGameId}/turnStartTime`), moveTimesRef = ref(db, `games/${currentGameId}/moveTimes`), gameHistoryRef = ref(db, `gamesHistory/${currentGameId}`);
       
       onValue(playersRef, (snapshot) => { 
         players = snapshot.val() || {}; 
@@ -244,7 +286,9 @@
         const user = auth.currentUser;
         const playerUID = user ? user.uid : myPlayerId;
         const blackPlayer = players.black, whitePlayer = players.white;
-        const nameToSet = user ? localPlayerName : (localStorage.getItem('playerName') || 'Гість');
+        
+        const nameToSet = user ? localPlayerName : (sessionStorage.getItem('guestNameForGame') || 'Гість');
+
         if (blackPlayer?.id === playerUID) myRole = 'black';
         else if (whitePlayer?.id === playerUID) myRole = 'white';
         else if (!blackPlayer) { myRole = 'black'; set(ref(db, `games/${currentGameId}/players/black`), { id: playerUID, name: nameToSet, isGuest: !user }); onDisconnect(ref(db, `games/${currentGameId}/players/black`)).remove(); }
@@ -269,7 +313,8 @@
         get(scoreRef).then((snapshot) => {
             const score = snapshot.val() || { black: 0, white: 0 };
             const blackName = players.black?.name || "Чорні", whiteName = players.white?.name || "Білі";
-            blackTimerBox.name.textContent = `${blackName} (${score.black})`; whiteTimerBox.name.textContent = `${whiteName} (${score.white})`;
+            blackTimerBox.name.innerHTML = `<span class="player-name">${blackName}</span> (${score.black})`; 
+            whiteTimerBox.name.innerHTML = `<span class="player-name">${whiteName}</span> (${score.white})`;
         });
       }
 
@@ -291,15 +336,24 @@
       function checkWinner(x,y,c){ const d=[[[1,0],[-1,0]],[[0,1],[0,-1]],[[1,1],[-1,-1]],[[1,-1],[-1,1]]]; for(let dir of d){ let count=1; for(let[dx,dy] of dir){ let nx=x,ny=y; while(true){ nx+=dx;ny+=dy; if(nx<0||ny<0||nx>=size||ny>=size||board[ny][nx]!==c)break; count++; } } if(count>=5)return true; } return false; }
       
       async function onGameEnd(winnerColor) {
-        const game = (await get(gameRef)).val();
-        if (!game.players.black || !game.players.white || game.players.black.isGuest || game.players.white.isGuest) { console.log("Один з гравців - гість. Рейтинг не розраховується."); return; }
-        const pBlackId = game.players.black.id, pWhiteId = game.players.white.id;
-        const pBlackRef = ref(db, `users/${pBlackId}`), pWhiteRef = ref(db, `users/${pWhiteId}`);
-        const pBlack = (await get(pBlackRef)).val(), pWhite = (await get(pWhiteRef)).val();
-        const resBlack = winnerColor === 'black' ? 1 : 0;
-        const [newRatingBlack, newRatingWhite] = calculateNewRatings(pBlack.rating, pWhite.rating, resBlack);
-        await set(ref(db, `users/${pBlackId}/rating`), newRatingBlack);
-        await set(ref(db, `users/${pWhiteId}/rating`), newRatingWhite);
+        const gameSnapshot = await get(gameRef);
+        const game = gameSnapshot.val();
+        if (!game || !game.players.black || !game.players.white) return;
+        const { black: blackPlayer, white: whitePlayer } = game.players;
+        const gameResult = { blackPlayer: { id: blackPlayer.id, name: blackPlayer.name }, whitePlayer: { id: whitePlayer.id, name: whitePlayer.name }, winner: winnerColor, score: game.score, timestamp: serverTimestamp() };
+        await set(gameHistoryRef, gameResult);
+        const updates = {};
+        if (!blackPlayer.isGuest) { updates[`/users/${blackPlayer.id}/games/${currentGameId}`] = true; }
+        if (!whitePlayer.isGuest) { updates[`/users/${whitePlayer.id}/games/${currentGameId}`] = true; }
+        if (Object.keys(updates).length > 0) { await update(ref(db), updates); }
+        if (!blackPlayer.isGuest && !whitePlayer.isGuest) {
+            const pBlackRef = ref(db, `users/${blackPlayer.id}`), pWhiteRef = ref(db, `users/${whitePlayer.id}`);
+            const pBlack = (await get(pBlackRef)).val(), pWhite = (await get(pWhiteRef)).val();
+            const resBlack = winnerColor === 'black' ? 1 : 0;
+            const [newRatingBlack, newRatingWhite] = calculateNewRatings(pBlack.rating, pWhite.rating, resBlack);
+            await set(ref(db, `users/${blackPlayer.id}/rating`), newRatingBlack);
+            await set(ref(db, `users/${whitePlayer.id}/rating`), newRatingWhite);
+        }
       }
 
       function calculateNewRatings(ratingA, ratingB, resultA) {
@@ -336,9 +390,11 @@
       }
 
       canvas.addEventListener("click", async (e) => {
-        if (myRole !== current || !overlay.classList.contains('hidden')) return;
+        if (myRole !== current || !overlay.classList.contains('hidden') || isMoveProcessing) return;
         const r=canvas.getBoundingClientRect(); const x=Math.round((e.clientX-r.left-cell/2)/cell); const y=Math.round((e.clientY-r.top-cell/2)/cell);
         if (x<0||y<0||x>=size||y>=size||board[y][x]) return;
+        
+        isMoveProcessing = true;
         
         const startTime = (await get(turnStartTimeRef)).val();
         if(startTime) {
@@ -364,6 +420,8 @@
         
         await set(currentRef, current === "black" ? "white" : "black");
         await set(turnStartTimeRef, serverTimestamp());
+
+        isMoveProcessing = false;
       });
       
       chatForm.addEventListener('submit', e => { 
@@ -371,18 +429,51 @@
         const messageText = chatInput.value.trim(); 
         if (messageText) {
           const senderName = myRole === 'black' ? (players.black?.name || 'Гість') : (myRole === 'white' ? (players.white?.name || 'Гість') : localPlayerName);
-          push(chatRef, { name: senderName, text: messageText }); 
+          const senderId = auth.currentUser?.uid || myPlayerId;
+          push(chatRef, { name: senderName, text: messageText, senderId: senderId }); 
           chatInput.value = ''; 
         } 
       });
-      onValue(chatRef, snapshot => { messagesDiv.innerHTML = ''; snapshot.forEach(childSnapshot => { const message = childSnapshot.val(); const p = document.createElement('p'); const nameSpan = document.createElement('span'); nameSpan.textContent = `${message.name}: `; p.appendChild(nameSpan); p.append(document.createTextNode(message.text)); messagesDiv.appendChild(p); }); messagesDiv.scrollTop = messagesDiv.scrollHeight; });
 
-      function exitToLobby() { remove(gameRef); window.location.href = window.location.pathname; }
-      function startRematch() {
-        remove(movesRef); set(currentRef, "black"); set(turnStartTimeRef, serverTimestamp());
-        remove(lastMoveRef); remove(moveTimesRef); remove(winnerRef);
+      let isFirstChatLoad = true;
+      onValue(chatRef, snapshot => { 
+        messagesDiv.innerHTML = ''; 
+        snapshot.forEach(childSnapshot => { 
+            const message = childSnapshot.val(); 
+            const p = document.createElement('p'); 
+            const nameSpan = document.createElement('span'); 
+            nameSpan.textContent = `${message.name}: `; 
+            p.appendChild(nameSpan); p.append(document.createTextNode(message.text)); 
+            messagesDiv.appendChild(p); 
+            if (!isFirstChatLoad && message.senderId !== (auth.currentUser?.uid || myPlayerId)) {
+                showChatToast(message);
+            }
+        }); 
+        isFirstChatLoad = false;
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; 
+      });
+
+      function showChatToast(message) {
+        clearTimeout(toastTimeout);
+        chatToast.innerHTML = `<strong>${message.name}:</strong> ${message.text}`;
+        chatToast.classList.add('show');
+        toastTimeout = setTimeout(() => { chatToast.classList.remove('show'); }, 5000);
       }
       
+      function exitToLobby() { remove(gameRef); window.location.href = window.location.pathname; }
+      function startRematch() {
+        const updates = {};
+        updates[`/games/${currentGameId}/moves`] = null;
+        updates[`/games/${currentGameId}/lastMove`] = null;
+        updates[`/games/${currentGameId}/winner`] = null;
+        updates[`/games/${currentGameId}/moveTimes`] = null;
+        updates[`/games/${currentGameId}/current`] = "black";
+        updates[`/games/${currentGameId}/turnStartTime`] = serverTimestamp();
+        update(ref(db), updates);
+        isMoveProcessing = false;
+      }
+      
+      chatHandle.addEventListener('click', () => chatContainer.classList.toggle('open'));
       resetButton.addEventListener("click", exitToLobby);
       rematchBtn.addEventListener("click", startRematch);
       backToLobbyFromGameBtn.addEventListener("click", exitToLobby);
